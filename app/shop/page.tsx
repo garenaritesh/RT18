@@ -1,5 +1,7 @@
 "use client";
 
+
+import logo from "../assests/brand_new.png";
 import { useEffect, useMemo, useState } from "react";
 
 type Product = {
@@ -31,6 +33,9 @@ export default function ShopPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [sort, setSort] = useState("newest");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   // =========================
   // LOAD PRODUCTS
@@ -74,6 +79,37 @@ export default function ShopPage() {
     }
 
     loadCategories();
+  }, []);
+
+  // =========================
+  // CART COUNT
+  // =========================
+
+  useEffect(() => {
+    function updateCartCount() {
+      try {
+        const cart: CartItem[] = JSON.parse(
+          localStorage.getItem("cart") || "[]"
+        );
+
+        const count = cart.reduce(
+          (sum, item) => sum + (item.quantity || 0),
+          0
+        );
+
+        setCartCount(count);
+      } catch {
+        setCartCount(0);
+      }
+    }
+
+    updateCartCount();
+
+    window.addEventListener("cartUpdated", updateCartCount);
+
+    return () => {
+      window.removeEventListener("cartUpdated", updateCartCount);
+    };
   }, []);
 
   // =========================
@@ -196,6 +232,8 @@ export default function ShopPage() {
       JSON.stringify(cart)
     );
 
+    window.dispatchEvent(new Event("cartUpdated"));
+
     alert("Added to cart!");
   }
 
@@ -203,73 +241,126 @@ export default function ShopPage() {
     <main className="min-h-screen bg-gray-50 text-gray-900">
 
       {/* ================= NAVBAR ================= */}
+      <nav className="sticky top-0 z-[100] bg-white border-b border-gray-100 overflow-visible">
+        <div className="max-w-7xl mx-auto px-4 sm:px-5 md:px-8">
+          <div className="h-16 md:h-[72px] flex items-center gap-4 md:gap-7">
 
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-
-        <div className="max-w-7xl mx-auto px-5 md:px-8">
-
-          <div className="h-20 flex items-center justify-between">
-
-            <a
-              href="/"
-              className="text-2xl md:text-3xl font-black tracking-tight"
-            >
-              RT18
+            {/* LOGO */}
+            <a href="/" className="shrink-0 flex items-center">
+              <img
+                src={logo.src}
+                alt="RT18"
+                className="h-30 md:h-30 w-auto object-contain"
+              />
             </a>
 
-            <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-
-              <a
-                href="/"
-                className="text-gray-500 hover:text-black transition"
-              >
-                Home
-              </a>
-
-              <a
-                href="/shop"
-                className="text-black font-semibold"
-              >
-                Shop
-              </a>
-
-              <a
-                href="/#categories"
-                className="text-gray-500 hover:text-black transition"
-              >
-                Categories
-              </a>
-
+            {/* DESKTOP NAV LINKS */}
+            <div className="hidden lg:flex items-center gap-7 text-sm font-medium">
+              <a href="/" className="text-gray-900 hover:text-gray-500 transition">Home</a>
+              <a href="/shop" className="text-gray-500 hover:text-gray-900 transition">Shop</a>
+              <a href="/#categories" className="text-gray-500 hover:text-gray-900 transition">Categories</a>
+              <a href="/about" className="text-gray-500 hover:text-gray-900 transition">About Us</a>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* ACTIONS */}
+            <div className="flex items-center gap-2.5 ml-auto">
 
-              <a
-                href="/cart"
-                className="border border-gray-200 bg-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition"
+              {/* SEARCH */}
+              <button
+                type="button"
+                onClick={() => setSearchOpen((v) => !v)}
+                aria-label="Search products"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-100 transition"
               >
-                Cart 🛒
-              </a>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-4-4" />
+                </svg>
+              </button>
 
+              {/* PROFILE */}
               <a
                 href="/account"
-                className="hidden sm:block bg-black text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition"
+                aria-label="My Account"
+                className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center text-sm font-bold hover:bg-gray-800 transition"
               >
-                Account
+                {"👤"}
               </a>
 
-            </div>
+              {/* CART */}
+              <a
+                href="/cart"
+                aria-label="Cart"
+                className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 transition relative"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M6 8h12l-1 12H7L6 8Z" />
+                  <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+                </svg>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-white text-black border border-black text-[9px] font-bold flex items-center justify-center">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </a>
 
+              {/* MOBILE MENU */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileMenuOpen}
+                className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-100 transition"
+              >
+                {mobileMenuOpen ? (
+                  <span className="text-xl leading-none">×</span>
+                ) : (
+                  <span className="text-xl leading-none">☰</span>
+                )}
+              </button>
+            </div>
           </div>
 
-        </div>
+          {/* SEARCH PANEL */}
+          {searchOpen && (
+            <div className="border-t border-gray-100 py-3">
+              <div className="relative max-w-3xl mx-auto">
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-4-4" />
+                </svg>
+                <input
+                  autoFocus
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-full pl-12 pr-5 py-3 text-sm outline-none focus:border-gray-400 focus:bg-white transition"
+                />
+              </div>
+            </div>
+          )}
 
+          {/* MOBILE MENU */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden border-t border-gray-100 py-3 bg-white relative z-[110]">
+              <div className="flex flex-col gap-1 text-sm font-semibold">
+                <a href="/" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">Home</a>
+                <a href="/shop" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-gray-50">Shop</a>
+                <a href="/#categories" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">Categories</a>
+                <a href="/about" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">About Us</a>
+                <a href="/account" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">My Account</a>
+              </div>
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* ================= SHOP HEADER ================= */}
 
-      <section className="bg-black text-white">
+      {/* ================= SHOP HEADER ================= */}
 
+      <section className="hidden md:block bg-black text-white">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-20">
 
           <p className="text-xs tracking-[0.3em] uppercase text-gray-400 font-semibold">
@@ -286,10 +377,7 @@ export default function ShopPage() {
           </p>
 
         </div>
-
-      </section>
-
-      {/* ================= FILTER BAR ================= */}
+      </section>      {/* ================= FILTER BAR ================= */}
 
       <section className="bg-white border-b border-gray-200 sticky top-20 z-40">
 
@@ -368,11 +456,10 @@ export default function ShopPage() {
                   onClick={() =>
                     setCategory(item)
                   }
-                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition ${
-                    category === item
-                      ? "bg-black text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
+                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition ${category === item
+                    ? "bg-black text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
                 >
                   {item}
                 </button>
@@ -510,10 +597,10 @@ export default function ShopPage() {
                 const discountPercent =
                   hasDiscount
                     ? Math.round(
-                        (discount /
-                          Number(product.price)) *
-                          100
-                      )
+                      (discount /
+                        Number(product.price)) *
+                      100
+                    )
                     : 0;
 
                 return (
@@ -525,10 +612,10 @@ export default function ShopPage() {
 
                     {/* IMAGE */}
 
-                        <a
-                            href={`/product/${product.id}`}
-                            className="relative block h-56 md:h-72 bg-gray-100 overflow-hidden"
-                        >
+                    <a
+                      href={`/product/${product.id}`}
+                      className="relative block h-56 md:h-72 bg-gray-100 overflow-hidden"
+                    >
 
                       {product.image_url ? (
 

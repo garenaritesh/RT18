@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import logo from "../assests/brand_new.png";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -32,7 +33,6 @@ export default function LoginPage() {
 
             if (data.success) {
                 alert("Login successful!");
-
                 window.location.href = "/";
             } else {
                 alert(data.message || "Login failed");
@@ -51,8 +51,12 @@ export default function LoginPage() {
 
                 {/* LOGO */}
                 <div className="text-center mb-8">
-                    <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center font-bold mx-auto">
-                        RT
+                    <div className="flex justify-center">
+                        <img
+                            src={logo.src}
+                            alt="RT18"
+                            className="h-30 w-auto object-contain"
+                        />
                     </div>
 
                     <h1 className="text-3xl font-bold text-gray-900 mt-4">
@@ -92,6 +96,7 @@ export default function LoginPage() {
                             {showPassword ? "🙈" : "👁️"}
                         </button>
                     </div>
+
                     <button
                         onClick={loginUser}
                         disabled={loading}
@@ -99,12 +104,12 @@ export default function LoginPage() {
                     >
                         {loading ? "Logging in..." : "Login"}
                     </button>
-
                 </div>
 
                 {/* REGISTER */}
                 <p className="text-center text-sm text-gray-500 mt-6">
                     Don't have an account?{" "}
+
                     <a
                         href="/register"
                         className="text-black font-semibold hover:underline"

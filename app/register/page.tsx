@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import logo from "../assests/brand_new.png";
+
 
 export default function RegisterPage() {
     const [name, setName] = useState("");
@@ -52,8 +54,12 @@ export default function RegisterPage() {
             <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
 
                 <div className="text-center mb-8">
-                    <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center font-bold mx-auto">
-                        RT
+                    <div className="flex justify-center">
+                        <img
+                            src={logo.src}
+                            alt="RT18"
+                            className="h-30 w-auto object-contain"
+                        />
                     </div>
 
                     <h1 className="text-3xl font-bold text-gray-900 mt-4">

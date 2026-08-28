@@ -1,5 +1,6 @@
 "use client";
 
+import logo from "../assests/brand_new.png";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -7,6 +8,8 @@ type CartItem = {
     id: number;
     name: string;
     price: number;
+    original_price?: number;
+    discount_price?: number | null;
     image_url: string | null;
     quantity: number;
 };
@@ -29,6 +32,8 @@ export default function CartPage() {
             "cart",
             JSON.stringify(updatedCart)
         );
+
+        window.dispatchEvent(new Event("cartUpdated"));
     }
 
     function increaseQuantity(id: number) {
@@ -69,8 +74,7 @@ export default function CartPage() {
 
     const total = cart.reduce(
         (sum, item) =>
-            sum +
-            Number(item.price) * item.quantity,
+            sum + Number(item.price) * item.quantity,
         0
     );
 
@@ -82,69 +86,42 @@ export default function CartPage() {
     return (
         <main className="min-h-screen bg-gray-50 text-gray-900">
 
-            {/* ================= NAVBAR ================= */}
+            {/* ================= CART HEADER ================= */}
 
-            <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-
+            <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-5 md:px-8">
+                    <div className="h-20 md:h-24 flex items-center justify-between">
 
-                    <div className="h-20 flex items-center justify-between">
+                        {/* LOGO */}
+
+                        <a
+                            href="/"
+                            className="shrink-0 flex items-center"
+                        >
+                            <img
+                                src={logo.src}
+                                alt="RT18"
+                                className="h-40 sm:h-40 md:h-40 w-auto object-contain"
+                            />
+                        </a>
+                        {/* BACK TO SHOPPING */}
 
                         <Link
-                            href="/"
-                            className="text-2xl md:text-3xl font-black tracking-tight"
+                            href="/shop"
+                            className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-xl border border-gray-200 bg-white text-sm md:text-base font-semibold text-gray-800 hover:bg-gray-50 hover:border-gray-300 transition"
                         >
-                            RT18
+                            <span className="text-lg">←</span>
+                            <span className="hidden sm:inline">
+                                Continue Shopping
+                            </span>
+                            <span className="sm:hidden">
+                                Shopping
+                            </span>
                         </Link>
 
-                        <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-
-                            <Link
-                                href="/"
-                                className="text-gray-500 hover:text-black transition"
-                            >
-                                Home
-                            </Link>
-
-                            <Link
-                                href="/shop"
-                                className="text-gray-500 hover:text-black transition"
-                            >
-                                Shop
-                            </Link>
-
-                            <Link
-                                href="/#categories"
-                                className="text-gray-500 hover:text-black transition"
-                            >
-                                Categories
-                            </Link>
-
-                        </div>
-
-                        <div className="flex items-center gap-3">
-
-                            <Link
-                                href="/cart"
-                                className="bg-black text-white px-4 py-2.5 rounded-xl text-sm font-semibold"
-                            >
-                                Cart 🛒
-                            </Link>
-
-                            <Link
-                                href="/account"
-                                className="hidden sm:block border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition"
-                            >
-                                Account
-                            </Link>
-
-                        </div>
-
                     </div>
-
                 </div>
-
-            </nav>
+            </header>
 
             {/* ================= CONTENT ================= */}
 
@@ -155,7 +132,6 @@ export default function CartPage() {
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-10">
 
                     <div>
-
                         <p className="text-xs uppercase tracking-[0.25em] text-gray-400 font-bold">
                             RT18 Shopping
                         </p>
@@ -163,7 +139,6 @@ export default function CartPage() {
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-2">
                             Your Cart
                         </h1>
-
                     </div>
 
                     {cart.length > 0 && (
@@ -274,13 +249,32 @@ export default function CartPage() {
 
                                             </div>
 
-                                            <p className="text-gray-500 text-sm mt-2">
-                                                ₹
-                                                {Number(item.price).toFixed(
-                                                    0
-                                                )}{" "}
-                                                per item
-                                            </p>
+                                            {/* PRICE */}
+
+                                            <div className="mt-2">
+
+                                                {item.original_price &&
+                                                    item.original_price > item.price && (
+                                                        <span className="text-gray-400 text-sm line-through mr-2">
+                                                            ₹
+                                                            {Number(
+                                                                item.original_price
+                                                            ).toFixed(0)}
+                                                        </span>
+                                                    )}
+
+                                                <span className="text-gray-700 text-sm font-semibold">
+                                                    ₹
+                                                    {Number(
+                                                        item.price
+                                                    ).toFixed(0)}
+                                                </span>
+
+                                                <span className="text-gray-500 text-sm ml-1">
+                                                    per item
+                                                </span>
+
+                                            </div>
 
                                             {/* BOTTOM */}
 
@@ -337,7 +331,9 @@ export default function CartPage() {
                                                     <p className="text-xl font-black">
                                                         ₹
                                                         {(
-                                                            Number(item.price) *
+                                                            Number(
+                                                                item.price
+                                                            ) *
                                                             item.quantity
                                                         ).toFixed(0)}
                                                     </p>
@@ -380,6 +376,7 @@ export default function CartPage() {
                                 <div className="space-y-4">
 
                                     <div className="flex justify-between text-gray-600">
+
                                         <span>
                                             Subtotal
                                         </span>
@@ -387,9 +384,11 @@ export default function CartPage() {
                                         <span className="font-semibold text-gray-900">
                                             ₹{total.toFixed(0)}
                                         </span>
+
                                     </div>
 
                                     <div className="flex justify-between text-gray-600">
+
                                         <span>
                                             Delivery
                                         </span>
@@ -397,6 +396,7 @@ export default function CartPage() {
                                         <span className="font-semibold text-green-600">
                                             Calculated at checkout
                                         </span>
+
                                     </div>
 
                                 </div>

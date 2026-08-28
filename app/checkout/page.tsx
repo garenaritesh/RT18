@@ -34,7 +34,7 @@ export default function CheckoutPage() {
     const [checkingAuth, setCheckingAuth] = useState(true);
 
     // =========================
-    // CHECK LOGIN + LOAD CART
+    // CHECK LOGIN + LOAD USER + CART
     // =========================
 
     useEffect(() => {
@@ -49,6 +49,7 @@ export default function CheckoutPage() {
                     return;
                 }
 
+                // Load saved profile details
                 if (data.user) {
                     setName(data.user.name || "");
                     setPhone(data.user.phone || "");
@@ -57,6 +58,7 @@ export default function CheckoutPage() {
                     setPincode(data.user.pincode || "");
                 }
 
+                // Load cart
                 const savedCart = JSON.parse(
                     localStorage.getItem("cart") || "[]"
                 );
@@ -68,7 +70,11 @@ export default function CheckoutPage() {
 
                 setCart(savedCart);
             } catch (error) {
-                console.error("Checkout initialization error:", error);
+                console.error(
+                    "Checkout initialization error:",
+                    error
+                );
+
                 router.push("/login");
             } finally {
                 setCheckingAuth(false);
@@ -79,14 +85,43 @@ export default function CheckoutPage() {
     }, [router]);
 
     // =========================
-    // TOTAL
+    // SUBTOTAL
     // =========================
 
-    const totalAmount = cart.reduce(
+    const subtotal = cart.reduce(
         (total, item) =>
             total +
             Number(item.price) * Number(item.quantity),
         0
+    );
+
+    // =========================
+    // SHIPPING
+    // =========================
+    // Above ₹500 = FREE
+    // ₹500 or below = ₹50
+
+    const shippingCharge = subtotal > 500 ? 0 : 50;
+
+    // =========================
+    // PAYMENT OFFER
+    // =========================
+
+    const COD_CHARGE = 20;
+    const ONLINE_DISCOUNT = 20;
+
+    const paymentAdjustment =
+        paymentMethod === "COD"
+            ? COD_CHARGE
+            : -ONLINE_DISCOUNT;
+
+    // Amount before payment offer
+    const baseTotal = subtotal + shippingCharge;
+
+    // Final amount customer actually pays
+    const totalAmount = Math.max(
+        0,
+        baseTotal + paymentAdjustment
     );
 
     // =========================
@@ -106,6 +141,7 @@ export default function CheckoutPage() {
                 "https://checkout.razorpay.com/v1/checkout.js";
 
             script.onload = () => resolve(true);
+
             script.onerror = () => resolve(false);
 
             document.body.appendChild(script);
@@ -122,6 +158,7 @@ export default function CheckoutPage() {
             return;
         }
 
+        // Address is coming from profile
         if (
             !name ||
             !phone ||
@@ -129,7 +166,11 @@ export default function CheckoutPage() {
             !city ||
             !pincode
         ) {
-            alert("Please fill all delivery details");
+            alert(
+                "Please complete your delivery address from your profile first."
+            );
+
+            router.push("/account/profile");
             return;
         }
 
@@ -143,17 +184,29 @@ export default function CheckoutPage() {
             try {
                 const response = await fetch("/api/orders", {
                     method: "POST",
+
                     headers: {
                         "Content-Type": "application/json",
                     },
+
                     body: JSON.stringify({
                         name,
                         phone,
                         address,
                         city,
                         pincode,
+
                         paymentMethod: "COD",
+
+                        // Final amount after ₹20 COD charge
                         totalAmount,
+
+                        subtotal,
+                        shippingCharge,
+
+                        // Useful if backend wants to know
+                        paymentAdjustment,
+
                         items: cart,
                     }),
                 });
@@ -167,10 +220,14 @@ export default function CheckoutPage() {
                         `/order-success?orderId=${data.order.id}`
                     );
                 } else {
-                    alert(data.message || "Order failed");
+                    alert(
+                        data.message ||
+                        "Order failed"
+                    );
                 }
             } catch (error) {
                 console.error(error);
+
                 alert("Something went wrong");
             } finally {
                 setLoading(false);
@@ -187,17 +244,22 @@ export default function CheckoutPage() {
 
         if (!loaded) {
             setLoading(false);
+
             alert("Razorpay failed to load");
+
             return;
         }
 
         try {
             const response = await fetch("/api/razorpay", {
                 method: "POST",
+
                 headers: {
                     "Content-Type": "application/json",
                 },
+
                 body: JSON.stringify({
+                    // Online payment gets ₹20 OFF
                     amount: totalAmount,
                 }),
             });
@@ -206,12 +268,16 @@ export default function CheckoutPage() {
 
             if (!data.success) {
                 setLoading(false);
+
                 alert("Unable to create payment");
+
                 return;
             }
 
             const options = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                key:
+                    process.env
+                        .NEXT_PUBLIC_RAZORPAY_KEY_ID,
 
                 amount: data.order.amount,
 
@@ -219,7 +285,8 @@ export default function CheckoutPage() {
 
                 name: "RT18",
 
-                description: "RT18 Ecommerce Order",
+                description:
+                    "RT18 Ecommerce Order",
 
                 order_id: data.order.id,
 
@@ -232,43 +299,57 @@ export default function CheckoutPage() {
                     color: "#000000",
                 },
 
-                handler: async function (payment: any) {
+                handler: async function (
+                    payment: any
+                ) {
                     try {
-                        const verifyResponse = await fetch(
-                            "/api/payment/verify",
-                            {
-                                method: "POST",
+                        const verifyResponse =
+                            await fetch(
+                                "/api/payment/verify",
+                                {
+                                    method: "POST",
 
-                                headers: {
-                                    "Content-Type": "application/json",
-                                },
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json",
+                                    },
 
-                                body: JSON.stringify({
-                                    razorpay_order_id:
-                                        payment.razorpay_order_id,
+                                    body: JSON.stringify({
+                                        razorpay_order_id:
+                                            payment.razorpay_order_id,
 
-                                    razorpay_payment_id:
-                                        payment.razorpay_payment_id,
+                                        razorpay_payment_id:
+                                            payment.razorpay_payment_id,
 
-                                    razorpay_signature:
-                                        payment.razorpay_signature,
+                                        razorpay_signature:
+                                            payment.razorpay_signature,
 
-                                    name,
-                                    phone,
-                                    address,
-                                    city,
-                                    pincode,
-                                    totalAmount,
-                                    items: cart,
-                                }),
-                            }
-                        );
+                                        name,
+                                        phone,
+                                        address,
+                                        city,
+                                        pincode,
+
+                                        // Final online amount
+                                        totalAmount,
+
+                                        subtotal,
+                                        shippingCharge,
+
+                                        paymentAdjustment,
+
+                                        items: cart,
+                                    }),
+                                }
+                            );
 
                         const verifyData =
                             await verifyResponse.json();
 
                         if (verifyData.success) {
-                            localStorage.removeItem("cart");
+                            localStorage.removeItem(
+                                "cart"
+                            );
 
                             router.push(
                                 `/order-success?orderId=${verifyData.order.id}`
@@ -281,7 +362,10 @@ export default function CheckoutPage() {
                         }
                     } catch (error) {
                         console.error(error);
-                        alert("Payment verification failed");
+
+                        alert(
+                            "Payment verification failed"
+                        );
                     } finally {
                         setLoading(false);
                     }
@@ -310,7 +394,9 @@ export default function CheckoutPage() {
             razorpay.open();
         } catch (error) {
             console.error(error);
+
             alert("Unable to start payment");
+
             setLoading(false);
         }
     }
@@ -321,7 +407,7 @@ export default function CheckoutPage() {
 
     if (checkingAuth) {
         return (
-            <main className="min-h-screen bg-gray-100 flex items-center justify-center">
+            <main className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
                 <p className="text-gray-500">
                     Preparing checkout...
                 </p>
@@ -334,219 +420,79 @@ export default function CheckoutPage() {
     // =========================
 
     return (
-        <main className="min-h-screen bg-gray-100 py-8 px-4 md:px-8">
+        <main className="min-h-screen bg-gray-100 py-6 md:py-8 px-3 sm:px-4 md:px-8">
 
             <div className="max-w-6xl mx-auto">
 
-                {/* HEADER */}
+                {/* =========================
+                    HEADER
+                ========================= */}
 
-                <div className="mb-8">
+                <div className="mb-5 md:mb-8">
 
                     <button
-                        onClick={() => router.push("/cart")}
-                        className="text-sm text-gray-500 hover:text-black"
+                        onClick={() =>
+                            router.push("/cart")
+                        }
+                        className="text-sm text-gray-500 hover:text-black transition"
                     >
                         ← Back to Cart
                     </button>
 
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mt-4">
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mt-3 md:mt-4">
                         Checkout
                     </h1>
 
-                    <p className="text-gray-500 mt-2">
+                    <p className="text-gray-500 mt-1.5">
                         Complete your order securely.
                     </p>
 
                 </div>
 
-                {/* MAIN GRID */}
+                {/* =========================
+                    MAIN GRID
+                ========================= */}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
 
-                    {/* LEFT SIDE */}
+                    {/* =========================
+                        ORDER SUMMARY
+                        MOBILE FIRST
+                    ========================= */}
 
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="lg:col-span-1 lg:order-2 order-1">
 
-                        {/* DELIVERY DETAILS */}
+                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6 lg:sticky lg:top-6">
 
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                            <div className="flex items-center justify-between">
 
-                            <h2 className="text-xl font-bold text-gray-900">
-                                Delivery Details
-                            </h2>
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    Order Summary
+                                </h2>
 
-                            <p className="text-sm text-gray-500 mt-1 mb-6">
-                                Where should we deliver your order?
-                            </p>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                <input
-                                    className="w-full border border-gray-300 p-3 rounded-xl text-gray-900 outline-none focus:border-black"
-                                    placeholder="Full Name"
-                                    value={name}
-                                    onChange={(e) =>
-                                        setName(e.target.value)
-                                    }
-                                />
-
-                                <input
-                                    className="w-full border border-gray-300 p-3 rounded-xl text-gray-900 outline-none focus:border-black"
-                                    placeholder="Mobile Number"
-                                    type="tel"
-                                    value={phone}
-                                    onChange={(e) =>
-                                        setPhone(e.target.value)
-                                    }
-                                />
-
-                                <textarea
-                                    className="w-full md:col-span-2 border border-gray-300 p-3 rounded-xl text-gray-900 outline-none focus:border-black"
-                                    placeholder="Full Address"
-                                    rows={4}
-                                    value={address}
-                                    onChange={(e) =>
-                                        setAddress(e.target.value)
-                                    }
-                                />
-
-                                <input
-                                    className="w-full border border-gray-300 p-3 rounded-xl text-gray-900 outline-none focus:border-black"
-                                    placeholder="City"
-                                    value={city}
-                                    onChange={(e) =>
-                                        setCity(e.target.value)
-                                    }
-                                />
-
-                                <input
-                                    className="w-full border border-gray-300 p-3 rounded-xl text-gray-900 outline-none focus:border-black"
-                                    placeholder="Pincode"
-                                    type="number"
-                                    value={pincode}
-                                    onChange={(e) =>
-                                        setPincode(e.target.value)
-                                    }
-                                />
+                                <span className="text-xs text-gray-500">
+                                    {cart.reduce(
+                                        (count, item) =>
+                                            count +
+                                            Number(
+                                                item.quantity
+                                            ),
+                                        0
+                                    )}{" "}
+                                    item
+                                    {cart.reduce(
+                                        (count, item) =>
+                                            count +
+                                            Number(
+                                                item.quantity
+                                            ),
+                                        0
+                                    ) !== 1
+                                        ? "s"
+                                        : ""}
+                                </span>
 
                             </div>
-
-                        </div>
-
-                        {/* PAYMENT METHOD */}
-
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-
-                            <h2 className="text-xl font-bold text-gray-900">
-                                Payment Method
-                            </h2>
-
-                            <p className="text-sm text-gray-500 mt-1 mb-5">
-                                Choose how you want to pay.
-                            </p>
-
-                            <div className="space-y-3">
-
-                                {/* COD */}
-
-                                <label
-                                    className={`flex items-center justify-between border rounded-xl p-4 cursor-pointer ${paymentMethod === "COD"
-                                            ? "border-black bg-gray-50"
-                                            : "border-gray-200"
-                                        }`}
-                                >
-
-                                    <div className="flex items-center gap-3">
-
-                                        <input
-                                            type="radio"
-                                            value="COD"
-                                            checked={
-                                                paymentMethod === "COD"
-                                            }
-                                            onChange={(e) =>
-                                                setPaymentMethod(
-                                                    e.target.value
-                                                )
-                                            }
-                                        />
-
-                                        <div>
-                                            <p className="font-semibold text-gray-900">
-                                                Cash on Delivery
-                                            </p>
-
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Pay when your order arrives
-                                            </p>
-                                        </div>
-
-                                    </div>
-
-                                    <span className="text-lg">
-                                        💵
-                                    </span>
-
-                                </label>
-
-                                {/* RAZORPAY */}
-
-                                <label
-                                    className={`flex items-center justify-between border rounded-xl p-4 cursor-pointer ${paymentMethod === "RAZORPAY"
-                                            ? "border-black bg-gray-50"
-                                            : "border-gray-200"
-                                        }`}
-                                >
-
-                                    <div className="flex items-center gap-3">
-
-                                        <input
-                                            type="radio"
-                                            value="RAZORPAY"
-                                            checked={
-                                                paymentMethod ===
-                                                "RAZORPAY"
-                                            }
-                                            onChange={(e) =>
-                                                setPaymentMethod(
-                                                    e.target.value
-                                                )
-                                            }
-                                        />
-
-                                        <div>
-                                            <p className="font-semibold text-gray-900">
-                                                Online Payment
-                                            </p>
-
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Secure payment with Razorpay
-                                            </p>
-                                        </div>
-
-                                    </div>
-
-                                    <span className="text-lg">
-                                        💳
-                                    </span>
-
-                                </label>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    {/* RIGHT SIDE */}
-
-                    <div className="lg:col-span-1">
-
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 lg:sticky lg:top-6">
-
-                            <h2 className="text-xl font-bold text-gray-900">
-                                Order Summary
-                            </h2>
 
                             {/* PRODUCTS */}
 
@@ -561,31 +507,42 @@ export default function CheckoutPage() {
 
                                         {item.image_url ? (
                                             <img
-                                                src={item.image_url}
-                                                alt={item.name}
-                                                className="w-16 h-16 rounded-xl object-cover"
+                                                src={
+                                                    item.image_url
+                                                }
+                                                alt={
+                                                    item.name
+                                                }
+                                                className="w-16 h-16 rounded-xl object-cover shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center">
+                                            <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
                                                 📦
                                             </div>
                                         )}
 
                                         <div className="flex-1 min-w-0">
 
-                                            <p className="font-semibold text-gray-900 truncate">
+                                            <p className="font-semibold text-gray-900 line-clamp-2">
                                                 {item.name}
                                             </p>
 
                                             <p className="text-sm text-gray-500 mt-1">
-                                                Qty: {item.quantity}
+                                                Qty:{" "}
+                                                {
+                                                    item.quantity
+                                                }
                                             </p>
 
                                             <p className="text-sm font-semibold text-gray-900 mt-1">
                                                 ₹
                                                 {(
-                                                    Number(item.price) *
-                                                    Number(item.quantity)
+                                                    Number(
+                                                        item.price
+                                                    ) *
+                                                    Number(
+                                                        item.quantity
+                                                    )
                                                 ).toFixed(2)}
                                             </p>
 
@@ -597,21 +554,26 @@ export default function CheckoutPage() {
 
                             </div>
 
-                            {/* TOTAL */}
+                            {/* TOTAL BREAKDOWN */}
 
                             <div className="border-t border-gray-200 mt-6 pt-5 space-y-3">
 
-                                <div className="flex justify-between text-gray-600">
+                                {/* SUBTOTAL */}
 
+                                <div className="flex justify-between text-gray-600">
                                     <span>
                                         Subtotal
                                     </span>
 
                                     <span>
-                                        ₹{totalAmount.toFixed(2)}
+                                        ₹
+                                        {subtotal.toFixed(
+                                            2
+                                        )}
                                     </span>
-
                                 </div>
+
+                                {/* DELIVERY */}
 
                                 <div className="flex justify-between text-gray-600">
 
@@ -619,20 +581,70 @@ export default function CheckoutPage() {
                                         Delivery
                                     </span>
 
-                                    <span className="font-semibold text-green-600">
-                                        FREE
-                                    </span>
+                                    {shippingCharge ===
+                                        0 ? (
+                                        <span className="font-semibold text-green-600">
+                                            FREE
+                                        </span>
+                                    ) : (
+                                        <span className="font-semibold text-gray-900">
+                                            ₹
+                                            {shippingCharge.toFixed(
+                                                2
+                                            )}
+                                        </span>
+                                    )}
 
                                 </div>
 
-                                <div className="border-t border-gray-200 pt-4 flex justify-between">
+                                {/* PAYMENT OFFER */}
+
+                                {paymentMethod ===
+                                    "COD" ? (
+                                    <div className="flex justify-between text-gray-600">
+
+                                        <span>
+                                            COD handling
+                                        </span>
+
+                                        <span className="font-semibold text-gray-900">
+                                            +₹20
+                                        </span>
+
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-between">
+
+                                        <span className="text-gray-600">
+                                            Online payment offer
+                                        </span>
+
+                                        <span className="font-semibold text-green-600">
+                                            -₹20
+                                        </span>
+
+                                    </div>
+                                )}
+
+                                {/* FREE SHIPPING NOTE */}
+
+                                <div className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                                    🚚 Free shipping on orders above ₹500
+                                </div>
+
+                                {/* FINAL TOTAL */}
+
+                                <div className="border-t border-gray-200 pt-4 flex justify-between items-center">
 
                                     <span className="font-bold text-gray-900">
                                         Total
                                     </span>
 
                                     <span className="text-2xl font-bold text-gray-900">
-                                        ₹{totalAmount.toFixed(2)}
+                                        ₹
+                                        {totalAmount.toFixed(
+                                            2
+                                        )}
                                     </span>
 
                                 </div>
@@ -642,19 +654,316 @@ export default function CheckoutPage() {
                             {/* PLACE ORDER */}
 
                             <button
-                                onClick={placeOrder}
+                                onClick={
+                                    placeOrder
+                                }
                                 disabled={loading}
-                                className="w-full mt-6 bg-black text-white p-4 rounded-xl font-semibold disabled:opacity-50"
+                                className="w-full mt-6 bg-black text-white p-4 rounded-xl font-semibold hover:bg-gray-900 transition disabled:opacity-50"
                             >
                                 {loading
                                     ? "Processing..."
-                                    : paymentMethod === "COD"
+                                    : paymentMethod ===
+                                        "COD"
                                         ? "Place COD Order"
                                         : "Pay Securely"}
                             </button>
 
                             <p className="text-xs text-gray-400 text-center mt-4">
-                                Your payment information is securely processed.
+                                🔒 Secure checkout
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    {/* =========================
+                        LEFT SIDE
+                    ========================= */}
+
+                    <div className="lg:col-span-2 space-y-5 md:space-y-6 lg:order-1">
+
+                        {/* =========================
+                            PAYMENT METHOD
+                            MOBILE SECOND
+                        ========================= */}
+
+                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6 order-2">
+
+                            <div className="flex items-center justify-between mb-5">
+
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">
+                                        Payment Method
+                                    </h2>
+
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Choose how you want to pay.
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            <div className="space-y-3">
+
+                                {/* =========================
+                                    COD
+                                ========================= */}
+
+                                <label
+                                    className={`block border rounded-xl p-4 cursor-pointer transition ${paymentMethod ===
+                                            "COD"
+                                            ? "border-black bg-gray-50"
+                                            : "border-gray-200 hover:border-gray-300"
+                                        }`}
+                                >
+
+                                    <div className="flex items-center justify-between gap-3">
+
+                                        <div className="flex items-center gap-3">
+
+                                            <input
+                                                type="radio"
+                                                value="COD"
+                                                checked={
+                                                    paymentMethod ===
+                                                    "COD"
+                                                }
+                                                onChange={(
+                                                    e
+                                                ) =>
+                                                    setPaymentMethod(
+                                                        e
+                                                            .target
+                                                            .value
+                                                    )
+                                                }
+                                            />
+
+                                            <div>
+
+                                                <div className="flex items-center gap-2">
+
+                                                    <p className="font-semibold text-gray-900">
+                                                        Cash on Delivery
+                                                    </p>
+
+                                                    <span className="text-[11px] font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                                                        +₹20
+                                                    </span>
+
+                                                </div>
+
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Pay when your order arrives
+                                                </p>
+
+                                            </div>
+
+                                        </div>
+
+                                        <span className="text-lg">
+                                            💵
+                                        </span>
+
+                                    </div>
+
+                                </label>
+
+                                {/* =========================
+                                    ONLINE PAYMENT
+                                ========================= */}
+
+                                <label
+                                    className={`block border rounded-xl p-4 cursor-pointer transition ${paymentMethod ===
+                                            "RAZORPAY"
+                                            ? "border-black bg-gray-50"
+                                            : "border-gray-200 hover:border-gray-300"
+                                        }`}
+                                >
+
+                                    <div className="flex items-center justify-between gap-3">
+
+                                        <div className="flex items-center gap-3">
+
+                                            <input
+                                                type="radio"
+                                                value="RAZORPAY"
+                                                checked={
+                                                    paymentMethod ===
+                                                    "RAZORPAY"
+                                                }
+                                                onChange={(
+                                                    e
+                                                ) =>
+                                                    setPaymentMethod(
+                                                        e
+                                                            .target
+                                                            .value
+                                                    )
+                                                }
+                                            />
+
+                                            <div>
+
+                                                <div className="flex items-center gap-2 flex-wrap">
+
+                                                    <p className="font-semibold text-gray-900">
+                                                        Online Payment
+                                                    </p>
+
+                                                    <span className="text-[11px] font-semibold bg-green-50 text-green-600 px-2 py-1 rounded-full">
+                                                        ₹20 OFF
+                                                    </span>
+
+                                                </div>
+
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Pay securely with Razorpay
+                                                </p>
+
+                                            </div>
+
+                                        </div>
+
+                                        <span className="text-lg">
+                                            💳
+                                        </span>
+
+                                    </div>
+
+                                </label>
+
+                            </div>
+
+                            {/* OFFER MESSAGE */}
+
+                            <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+
+                                {paymentMethod ===
+                                    "COD" ? (
+                                    <p className="text-xs text-gray-600">
+                                        💡 Prefer online payment?{" "}
+                                        <span className="font-semibold text-green-600">
+                                            Save ₹20
+                                        </span>{" "}
+                                        by paying online.
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-gray-600">
+                                        🎉 You're saving{" "}
+                                        <span className="font-semibold text-green-600">
+                                            ₹20
+                                        </span>{" "}
+                                        with online payment.
+                                    </p>
+                                )}
+
+                            </div>
+
+                        </div>
+
+                        {/* =========================
+                            DELIVERY ADDRESS
+                            MOBILE THIRD
+                        ========================= */}
+
+                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6 order-3">
+
+                            <div className="flex items-start justify-between gap-4">
+
+                                <div>
+
+                                    <h2 className="text-xl font-bold text-gray-900">
+                                        Delivery Address
+                                    </h2>
+
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Your saved profile address
+                                    </p>
+
+                                </div>
+
+                                <button
+                                    onClick={() =>
+                                        router.push(
+                                            "/account/profile"
+                                        )
+                                    }
+                                    className="shrink-0 text-sm font-semibold text-gray-700 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
+                                >
+                                    Change
+                                </button>
+
+                            </div>
+
+                            {/* SAVED ADDRESS CARD */}
+
+                            <div className="mt-5 border border-gray-200 rounded-xl p-4 bg-gray-50">
+
+                                <div className="flex items-start gap-3">
+
+                                    <div className="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center shrink-0">
+                                        📍
+                                    </div>
+
+                                    <div className="min-w-0">
+
+                                        <p className="font-semibold text-gray-900">
+                                            {name ||
+                                                "Your Name"}
+                                        </p>
+
+                                        <p className="text-sm text-gray-600 mt-1">
+                                            {phone ||
+                                                "Mobile Number"}
+                                        </p>
+
+                                        <p className="text-sm text-gray-600 mt-2 leading-6">
+                                            {address ||
+                                                "No address saved"}
+                                            {city
+                                                ? `, ${city}`
+                                                : ""}
+                                            {pincode
+                                                ? ` - ${pincode}`
+                                                : ""}
+                                        </p>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            {/* NO ADDRESS WARNING */}
+
+                            {(!address ||
+                                !city ||
+                                !pincode) && (
+                                    <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+
+                                        <p className="text-sm font-semibold text-red-700">
+                                            Delivery address is incomplete.
+                                        </p>
+
+                                        <button
+                                            onClick={() =>
+                                                router.push(
+                                                    "/account/profile"
+                                                )
+                                            }
+                                            className="text-xs font-semibold text-red-600 mt-1 underline"
+                                        >
+                                            Complete your address
+                                        </button>
+
+                                    </div>
+                                )}
+
+                            <p className="text-xs text-gray-400 mt-4">
+                                Need to change your delivery
+                                address? Update it from your
+                                profile.
                             </p>
 
                         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import logo from "../../assests/brand_new.png";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -11,6 +12,12 @@ type Product = {
     stock: number;
     image_url: string | null;
     category_name: string | null;
+};
+
+type User = {
+    id: number;
+    name: string;
+    email: string;
 };
 
 type ProductImage = {
@@ -28,6 +35,83 @@ export default function ProductPage() {
 
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
+
+    // NAVBAR STATE
+    const [user, setUser] = useState<User | null>(null);
+    const [checkingAuth, setCheckingAuth] = useState(true);
+    const [cartCount, setCartCount] = useState(0);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [search, setSearch] = useState("");
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    const searchResults = search.trim()
+        ? products
+            .filter((item) =>
+                `${item.name} ${item.category_name || ""}`
+                    .toLowerCase()
+                    .includes(search.trim().toLowerCase())
+            )
+            .slice(0, 6)
+        : [];
+
+    useEffect(() => {
+        async function checkUser() {
+            try {
+                const response = await fetch("/api/auth/me");
+                const data = await response.json();
+                if (data.success) setUser(data.user);
+            } catch (error) {
+                console.error("Auth check error:", error);
+            } finally {
+                setCheckingAuth(false);
+            }
+        }
+        checkUser();
+    }, []);
+
+    useEffect(() => {
+        async function loadProducts() {
+            try {
+                const response = await fetch("/api/products");
+                const data = await response.json();
+                setProducts(Array.isArray(data) ? data : data.products || []);
+            } catch (error) {
+                console.error("Products loading error:", error);
+            }
+        }
+        loadProducts();
+    }, []);
+
+    useEffect(() => {
+        function updateCartCount() {
+            const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+            const count = cart.reduce(
+                (total: number, item: { quantity?: number }) =>
+                    total + (item.quantity || 0),
+                0
+            );
+            setCartCount(count);
+        }
+
+        updateCartCount();
+        window.addEventListener("cartUpdated", updateCartCount);
+        return () => window.removeEventListener("cartUpdated", updateCartCount);
+    }, []);
+
+    async function logout() {
+        try {
+            await fetch("/api/auth/logout", { method: "POST" });
+        } catch (error) {
+            console.error("Logout error:", error);
+        } finally {
+            setUser(null);
+            setProfileOpen(false);
+            setMobileMenuOpen(false);
+            router.push("/");
+        }
+    }
 
     useEffect(() => {
         async function loadProduct() {
@@ -267,67 +351,211 @@ export default function ProductPage() {
         <main className="min-h-screen bg-gray-50 text-gray-900">
 
             {/* NAVBAR */}
+            <nav className="sticky top-0 z-[5000] bg-white/95 backdrop-blur border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-5 md:px-8">
+                    {/* MAIN HEADER */}
+                    <div className="h-20 flex items-center gap-3 md:gap-5">
 
-            <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-
-                <div className="max-w-7xl mx-auto px-5 md:px-8">
-
-                    <div className="h-20 flex items-center justify-between">
-
-                        <a
-                            href="/"
-                            className="text-2xl md:text-3xl font-black tracking-tight"
-                        >
-                            RT18
+                        {/* LOGO */}
+                        <a href="/" className="shrink-0 flex items-center">
+                            <img
+                                src={logo.src}
+                                alt="RT18"
+                                className="h-40 sm:h-40 md:h-40 w-auto object-contain"
+                            />
                         </a>
 
-                        <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-
-                            <a
-                                href="/"
-                                className="text-gray-500 hover:text-black transition"
-                            >
-                                Home
-                            </a>
-
-                            <a
-                                href="/shop"
-                                className="text-gray-500 hover:text-black transition"
-                            >
-                                Shop
-                            </a>
-
-                            <a
-                                href="/#categories"
-                                className="text-gray-500 hover:text-black transition"
-                            >
-                                Categories
-                            </a>
-
+                        {/* DESKTOP LINKS */}
+                        <div className="hidden lg:flex items-center gap-7 text-sm font-medium">
+                            <a href="/" className="text-black hover:text-gray-500 transition">Home</a>
+                            <a href="/shop" className="text-gray-500 hover:text-black transition">Shop</a>
+                            <a href="/#categories" className="text-gray-500 hover:text-black transition">Categories</a>
+                            <a href="/about" className="text-gray-500 hover:text-black transition">About Us</a>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex-1" />
 
-                            <a
-                                href="/cart"
-                                className="border border-gray-200 bg-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition"
+                        {/* ACTIONS */}
+                        <div className="flex items-center gap-2">
+                            {/* SEARCH */}
+                            <button
+                                onClick={() => {
+                                    setSearchOpen((value) => !value);
+                                    setMobileMenuOpen(false);
+                                }}
+                                aria-label="Search products"
+                                className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
                             >
-                                Cart 🛒
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="11" cy="11" r="7" />
+                                    <path d="m20 20-4-4" />
+                                </svg>
+                            </button>
+
+                            {/* PROFILE */}
+                            {!checkingAuth && user ? (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => {
+                                            setProfileOpen((value) => !value);
+                                            setMobileMenuOpen(false);
+                                        }}
+                                        aria-label="Open profile menu"
+                                        className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 transition"
+                                    >
+                                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="8" r="3.5" />
+                                            <path d="M5 20c.8-3.5 3.2-5.5 7-5.5s6.2 2 7 5.5" />
+                                        </svg>
+                                    </button>
+
+                                    {profileOpen && (
+                                        <div className="absolute right-0 top-14 w-56 bg-white border border-gray-200 rounded-2xl shadow-2xl p-2 z-[10000]">
+                                            <div className="px-3 py-3 border-b border-gray-100">
+                                                <p className="font-semibold truncate">{user.name}</p>
+                                                <p className="text-xs text-gray-500 truncate mt-1">{user.email}</p>
+                                            </div>
+                                            <a href="/account" className="block px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">My Account</a>
+                                            <a href="/account/orders" className="block px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">My Orders</a>
+                                            <button onClick={logout} className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50">Logout</button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <a href="/login" className="hidden sm:flex w-11 h-11 rounded-full bg-black text-white items-center justify-center" aria-label="Login">
+                                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <circle cx="12" cy="8" r="3.5" />
+                                        <path d="M5 20c.8-3.5 3.2-5.5 7-5.5s6.2 2 7 5.5" />
+                                    </svg>
+                                </a>
+                            )}
+
+                            {/* CART */}
+                            <a href="/cart" aria-label="Cart" className="relative w-11 h-11 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 transition">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M6 8h12l1 12H5L6 8Z" />
+                                    <path d="M9 8a3 3 0 0 1 6 0" />
+                                </svg>
+                                {cartCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">
+                                        {cartCount > 99 ? "99+" : cartCount}
+                                    </span>
+                                )}
                             </a>
 
-                            <a
-                                href="/account"
-                                className="hidden sm:block bg-black text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition"
+                            {/* MOBILE MENU TOGGLE */}
+                            <button
+                                onClick={() => {
+                                    setMobileMenuOpen((value) => !value);
+                                    setProfileOpen(false);
+                                    setSearchOpen(false);
+                                }}
+                                className="lg:hidden w-11 h-11 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
+                                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
                             >
-                                Account
-                            </a>
-
+                                {mobileMenuOpen ? (
+                                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M6 6l12 12" />
+                                        <path d="M18 6L6 18" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M4 6h16" />
+                                        <path d="M4 12h16" />
+                                        <path d="M4 18h16" />
+                                    </svg>
+                                )}
+                            </button>
                         </div>
-
                     </div>
 
+                    {/* SEARCH BAR */}
+                    {searchOpen && (
+                        <div className="pb-4 relative z-[10000]">
+                            <div className="relative">
+                                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="11" cy="11" r="7" />
+                                    <path d="m20 20-4-4" />
+                                </svg>
+                                <input
+                                    autoFocus
+                                    type="search"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Search products..."
+                                    className="w-full bg-gray-50 border border-gray-300 rounded-full pl-12 pr-14 py-3 text-sm outline-none focus:border-gray-500 focus:bg-white transition"
+                                />
+                                <button
+                                    onClick={() => { setSearch(""); setSearchOpen(false); }}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 transition"
+                                    aria-label="Close search"
+                                >
+                                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M6 6l12 12" />
+                                        <path d="M18 6L6 18" />
+                                    </svg>
+                                </button>
+
+                                {search.trim() && (
+                                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden z-[10001]">
+                                        {searchResults.length > 0 ? searchResults.map((item) => (
+                                            <a
+                                                key={item.id}
+                                                href={`/product/${item.id}`}
+                                                onClick={() => { setSearch(""); setSearchOpen(false); }}
+                                                className="flex items-center gap-3 p-3 hover:bg-gray-50 transition"
+                                            >
+                                                <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                                                    {item.image_url ? (
+                                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400">RT18</div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold truncate">{item.name}</p>
+                                                    <p className="text-xs text-gray-500 mt-0.5">₹{Number(item.discount_price ?? item.price).toFixed(0)}</p>
+                                                </div>
+                                            </a>
+                                        )) : (
+                                            <div className="p-5 text-sm text-gray-500 text-center">No products found.</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
+                {/* MOBILE TOP-DOWN MENU */}
+                {mobileMenuOpen && (
+                    <>
+                        <div
+                            className="lg:hidden fixed inset-0 top-20 bg-black/20 z-[4998]"
+                            onClick={() => setMobileMenuOpen(false)}
+                        />
+                        <div className="lg:hidden absolute left-0 right-0 top-full bg-white border-t border-gray-100 shadow-2xl z-[4999] max-h-[calc(100vh-80px)] overflow-y-auto">
+                            <div className="px-5 py-4">
+                                <a href="/" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">Home</a>
+                                <a href="/shop" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">Shop</a>
+                                <a href="/#categories" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">Categories</a>
+                                <a href="/about" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">About Us</a>
+
+                                <div className="my-2 border-t border-gray-100" />
+
+                                {!checkingAuth && user ? (
+                                    <>
+                                        <a href="/account" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">My Account</a>
+                                        <a href="/account/orders" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">My Orders</a>
+                                        <button onClick={logout} className="w-full text-left px-5 py-4 rounded-xl text-base font-semibold text-red-600 hover:bg-red-50 transition">Logout</button>
+                                    </>
+                                ) : (
+                                    <a href="/login" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">Login</a>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
             </nav>
 
             {/* PRODUCT */}
@@ -403,8 +631,8 @@ export default function ProductPage() {
                                             )
                                         }
                                         className={`relative rounded-xl overflow-hidden border-2 transition ${selectedImage === image.image_url
-                                                ? "border-black"
-                                                : "border-transparent"
+                                            ? "border-black"
+                                            : "border-transparent"
                                             }`}
                                     >
 
