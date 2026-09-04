@@ -325,22 +325,37 @@ export default function ProductPage() {
         <main className="min-h-screen bg-gray-50 text-gray-900">
 
             {/* NAVBAR */}
-            <nav className="sticky top-0 z-5000 bg-white/95 backdrop-blur border-b border-gray-100">
+            <nav className="sticky top-0 z-9999 bg-white/95 backdrop-blur border-b border-gray-100 overflow-visible">
                 <div className="max-w-7xl mx-auto px-4 sm:px-5 md:px-8">
                     {/* MAIN HEADER */}
                     <div className="h-20 flex items-center gap-3 md:gap-5">
+
+                        {/* MOBILE MENU BUTTON */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setMobileMenuOpen((value) => !value);
+                                setProfileOpen(false);
+                                setSearchOpen(false);
+                            }}
+                            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                            aria-expanded={mobileMenuOpen}
+                            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition shrink-0"
+                        >
+                            {mobileMenuOpen ? "×" : "☰"}
+                        </button>
 
                         {/* LOGO */}
                         <a href="/" className="shrink-0 flex items-center">
                             <img
                                 src={logo.src}
                                 alt="RT18"
-                                className="h-40 sm:h-40 md:h-40 w-auto object-contain"
+                                className="h-16 sm:h-16 md:h-20 w-auto object-contain"
                             />
                         </a>
 
                         {/* DESKTOP LINKS */}
-                        <div className="hidden lg:flex items-center gap-7 text-sm font-medium">
+                        <div className="hidden lg:flex items-center gap-6 text-sm font-medium shrink-0">
                             <a href="/" className="text-black hover:text-gray-500 transition">Home</a>
                             <a href="/shop" className="text-gray-500 hover:text-black transition">Shop</a>
                             <a href="/#categories" className="text-gray-500 hover:text-black transition">Categories</a>
@@ -358,7 +373,7 @@ export default function ProductPage() {
                                     setMobileMenuOpen(false);
                                 }}
                                 aria-label="Search products"
-                                className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
+                                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
                             >
                                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <circle cx="11" cy="11" r="7" />
