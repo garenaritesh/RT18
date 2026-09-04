@@ -709,7 +709,7 @@ export default function Home() {
 
             {/* LEFT CONTENT */}
 
-            <div className="py-16 md:py-20">
+            <div className="order-2 py-16 md:order-none md:py-20">
 
               <p className="text-sm md:text-base font-semibold tracking-[0.25em] uppercase text-gray-500 mb-5">
                 RT18 • New Collection
@@ -781,7 +781,7 @@ export default function Home() {
 
             {/* RIGHT PRODUCT IMAGE */}
 
-            <div className="relative flex items-center justify-center py-10 md:py-16">
+            <div className="order-1 relative flex items-center justify-center py-10 md:order-none md:py-16">
 
               {/* Soft background shape */}
 
