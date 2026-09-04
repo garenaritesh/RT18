@@ -22,10 +22,28 @@ type Product = {
   category_name: string | null;
 };
 
-type Category = {
-  id: number;
-  name: string;
-};
+const categories = [
+  {
+    name: "Jewellery",
+    subtitle: "Elegant pieces",
+    icon: "✦",
+  },
+  {
+    name: "Accessories",
+    subtitle: "Complete your look",
+    icon: "◇",
+  },
+  {
+    name: "Fashion",
+    subtitle: "Everyday style",
+    icon: "◈",
+  },
+  {
+    name: "New Arrivals",
+    subtitle: "Fresh & trending",
+    icon: "✧",
+  },
+];
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -33,9 +51,6 @@ export default function Home() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
-
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
 
   const [cartCount, setCartCount] = useState(0);
   const [search, setSearch] = useState("");
@@ -90,39 +105,23 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    async function loadCategories() {
-      try {
-        const response = await fetch("/api/categories");
-        const data = await response.json();
-
-        if (Array.isArray(data)) {
-          setCategories(data);
-        }
-      } catch (error) {
-        console.error("Categories loading error:", error);
-      } finally {
-        setLoadingCategories(false);
+    async function updateCartCount() {
+      if (!user) {
+        setCartCount(0);
+        return;
       }
-    }
 
-    loadCategories();
-  }, []);
-
-  useEffect(() => {
-    function updateCartCount() {
-      const cart = JSON.parse(
-        localStorage.getItem("cart") || "[]"
-      );
-
-      const count = cart.reduce(
-        (
-          total: number,
-          item: { quantity?: number }
-        ) => total + (item.quantity || 0),
-        0
-      );
-
-      setCartCount(count);
+      try {
+        const response = await fetch("/api/cart");
+        const data = await response.json();
+        const count = (data.cart || []).reduce(
+          (total: number, item: { quantity?: number }) => total + Number(item.quantity || 0),
+          0
+        );
+        setCartCount(count);
+      } catch {
+        setCartCount(0);
+      }
     }
 
     updateCartCount();
@@ -135,7 +134,7 @@ export default function Home() {
         updateCartCount
       );
     };
-  }, []);
+  }, [user]);
 
   async function logout() {
     try {
@@ -154,58 +153,34 @@ export default function Home() {
     }
   }
 
-  function addToCart(product: Product) {
+  async function addToCart(product: Product) {
+    if (!user) {
+      alert("Please login to add products to your cart");
+      window.location.href = "/login";
+      return;
+    }
+
     if (product.stock <= 0) {
       alert("This product is out of stock");
       return;
     }
 
-    const cart = JSON.parse(
-      localStorage.getItem("cart") || "[]"
-    );
-
-    const existingProduct = cart.find(
-      (item: Product & { quantity: number }) =>
-        item.id === product.id
-    );
-
-    let updatedCart;
-
-    if (existingProduct) {
-      updatedCart = cart.map(
-        (item: Product & { quantity: number }) =>
-          item.id === product.id
-            ? {
-              ...item,
-              quantity: item.quantity + 1,
-            }
-            : item
-      );
-    } else {
-      updatedCart = [
-        ...cart,
-        {
-          id: product.id,
-          name: product.name,
-          price:
-            Number(product.price) -
-            Number(product.discount_price || 0),
-          original_price: product.price,
-          discount_price: product.discount_price,
-          image_url: product.image_url,
-          quantity: 1,
-        },
-      ];
+    try {
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id, quantity: 1 }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        alert(data.message || "Failed to add product to cart");
+        return;
+      }
+      window.dispatchEvent(new Event("cartUpdated"));
+      alert("Product added to cart");
+    } catch {
+      alert("Failed to add product to cart");
     }
-
-    localStorage.setItem(
-      "cart",
-      JSON.stringify(updatedCart)
-    );
-
-    window.dispatchEvent(new Event("cartUpdated"));
-
-    alert("Product added to cart");
   }
 
   return (
@@ -213,10 +188,10 @@ export default function Home() {
 
       {/* ================= NAVBAR ================= */}
 
-      <nav className="sticky top-0 z-[9999] bg-white/95 border-b border-gray-100">
+      <nav className="sticky top-0 z-[9999] bg-white/95 backdrop-blur border-b border-gray-100">
 
         {/* ================= MAIN NAVBAR ================= */}
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-5 md:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-5 md:px-8">
 
           <div className="h-20 flex items-center gap-3 md:gap-5">
 
@@ -247,7 +222,7 @@ export default function Home() {
               <img
                 src={logo.src}
                 alt="RT18"
-                className="h-30 sm:h-30 md:h-30 w-auto object-contain"
+                className="h-16 sm:h-16 md:h-20 w-auto object-contain"
               />
             </a>
 
@@ -262,7 +237,7 @@ export default function Home() {
               </a>
 
               <a
-                href="/shop"
+                href="#shop"
                 className="text-gray-500 hover:text-black transition"
               >
                 Shop
@@ -536,193 +511,194 @@ export default function Home() {
         </div>
 
 
-        {/* ===================================================== */}
-        {/* ================= MOBILE SIDE MENU ================== */}
-        {/* ===================================================== */}
+      </nav>
 
-        {mobileMenuOpen && (
-          <>
+      {/* ===================================================== */}
+      {/* ================= MOBILE SIDE MENU ================== */}
+      {/* ===================================================== */}
 
-            {/* OVERLAY */}
-            <div
-              onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/40 z-[99998] lg:hidden"
-            />
+      {mobileMenuOpen && (
+        <>
 
-            {/* SIDE DRAWER */}
-            <aside
-              className="fixed left-0 top-0 bottom-0 w-[82%] max-w-sm bg-white z-[99999] shadow-2xl lg:hidden overflow-y-auto"
-            >
+          {/* OVERLAY */}
+          <div
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/40 z-[9998] lg:hidden"
+          />
 
-              {/* DRAWER HEADER */}
-              <div className="h-20 px-5 border-b border-gray-100 flex items-center justify-between">
+          {/* SIDE DRAWER */}
+          <aside
+            className="fixed left-0 top-0 bottom-0 w-[82%] max-w-sm bg-white z-[10000] shadow-2xl lg:hidden overflow-y-auto"
+          >
 
-                <a
-                  href="/"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center"
+            {/* DRAWER HEADER */}
+            <div className="h-20 px-5 border-b border-gray-100 flex items-center justify-between">
+
+              <a
+                href="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center"
+              >
+                <img
+                  src={logo.src}
+                  alt="RT18"
+                  className="h-14 w-auto object-contain"
+                />
+              </a>
+
+              {/* CLOSE MENU */}
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
+                aria-label="Close menu"
+              >
+                <svg
+                  className="w-6 h-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
-                  <img
-                    src={logo.src}
-                    alt="RT18"
-                    className="h-14 w-auto object-contain"
-                  />
-                </a>
+                  <path d="M6 6l12 12" />
+                  <path d="M18 6L6 18" />
+                </svg>
+              </button>
 
-                {/* CLOSE MENU */}
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
-                  aria-label="Close menu"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M6 6l12 12" />
-                    <path d="M18 6L6 18" />
-                  </svg>
-                </button>
-
-              </div>
+            </div>
 
 
-              {/* MENU LINKS */}
-              <div className="p-4 space-y-2">
+            {/* MENU LINKS */}
+            <div className="p-4 space-y-2">
 
-                <a
-                  href="/"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
-                >
-                  Home
-                </a>
+              <a
+                href="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
+              >
+                Home
+              </a>
 
-                <a
-                  href="/shop"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
-                >
-                  Shop
-                </a>
+              <a
+                href="#shop"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
+              >
+                Shop
+              </a>
 
-                <a
-                  href="#categories"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
-                >
-                  Categories
-                </a>
+              <a
+                href="#categories"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
+              >
+                Categories
+              </a>
 
-                <a
-                  href="/about"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
-                >
-                  About Us
-                </a>
+              <a
+                href="/about"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
+              >
+                About Us
+              </a>
 
-                <a
-                  href="/contact"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
-                >
-                  Contact Us
-                </a>
+              <a
+                href="/contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
+              >
+                Contact Us
+              </a>
 
-                <a
-                  href="/account/orders"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
-                >
-                  Track Order
-                </a>
+              <a
+                href="/account/orders"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-4 py-4 rounded-xl text-base font-semibold hover:bg-gray-100 transition"
+              >
+                Track Order
+              </a>
 
-              </div>
+            </div>
 
 
-              {/* MOBILE ACCOUNT SECTION */}
-              <div className="border-t border-gray-100 p-5">
+            {/* MOBILE ACCOUNT SECTION */}
+            <div className="border-t border-gray-100 p-5">
 
-                {!checkingAuth && (
-                  user ? (
+              {!checkingAuth && (
+                user ? (
 
-                    <>
+                  <>
 
-                      <div className="mb-4">
-                        <p className="font-semibold text-gray-900">
-                          {user.name}
-                        </p>
+                    <div className="mb-4">
+                      <p className="font-semibold text-gray-900">
+                        {user.name}
+                      </p>
 
-                        <p className="text-xs text-gray-500 mt-1 break-all">
-                          {user.email}
-                        </p>
-                      </div>
-
-                      <a
-                        href="/account"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="block px-4 py-3 rounded-xl bg-gray-50 text-sm font-semibold mb-2"
-                      >
-                        My Account
-                      </a>
-
-                      <a
-                        href="/account/orders"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="block px-4 py-3 rounded-xl bg-gray-50 text-sm font-semibold mb-2"
-                      >
-                        My Orders
-                      </a>
-
-                      <button
-                        onClick={() => {
-                          setMobileMenuOpen(false);
-                          logout();
-                        }}
-                        className="w-full text-left px-4 py-3 rounded-xl bg-red-50 text-red-600 text-sm font-semibold"
-                      >
-                        Logout
-                      </button>
-
-                    </>
-
-                  ) : (
-
-                    <div className="flex gap-2">
-
-                      <a
-                        href="/login"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex-1 text-center border border-gray-200 py-3 rounded-xl text-sm font-semibold"
-                      >
-                        Login
-                      </a>
-
-                      <a
-                        href="/register"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex-1 text-center bg-black text-white py-3 rounded-xl text-sm font-semibold"
-                      >
-                        Register
-                      </a>
-
+                      <p className="text-xs text-gray-500 mt-1 break-all">
+                        {user.email}
+                      </p>
                     </div>
 
-                  )
-                )}
+                    <a
+                      href="/account"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-3 rounded-xl bg-gray-50 text-sm font-semibold mb-2"
+                    >
+                      My Account
+                    </a>
 
-              </div>
+                    <a
+                      href="/account/orders"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-3 rounded-xl bg-gray-50 text-sm font-semibold mb-2"
+                    >
+                      My Orders
+                    </a>
 
-            </aside>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full text-left px-4 py-3 rounded-xl bg-red-50 text-red-600 text-sm font-semibold"
+                    >
+                      Logout
+                    </button>
 
-          </>
-        )}
+                  </>
 
-      </nav>
+                ) : (
+
+                  <div className="flex gap-2">
+
+                    <a
+                      href="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex-1 text-center border border-gray-200 py-3 rounded-xl text-sm font-semibold"
+                    >
+                      Login
+                    </a>
+
+                    <a
+                      href="/register"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex-1 text-center bg-black text-white py-3 rounded-xl text-sm font-semibold"
+                    >
+                      Register
+                    </a>
+
+                  </div>
+
+                )
+              )}
+
+            </div>
+
+          </aside>
+
+        </>
+      )}
+
       {/* HERO SECTION */}
 
       <section className="bg-[#f7f5f1] overflow-hidden">
@@ -733,7 +709,7 @@ export default function Home() {
 
             {/* LEFT CONTENT */}
 
-            <div className="order-2 md:order-1 py-10 md:py-20">
+            <div className="py-16 md:py-20">
 
               <p className="text-sm md:text-base font-semibold tracking-[0.25em] uppercase text-gray-500 mb-5">
                 RT18 • New Collection
@@ -753,7 +729,7 @@ export default function Home() {
               <div className="flex flex-wrap items-center gap-4 mt-9">
 
                 <a
-                  href="/shop"
+                  href="#shop"
                   className="inline-flex items-center gap-3 bg-black text-white px-7 py-3.5 rounded-full font-semibold hover:bg-gray-800 transition"
                 >
                   Shop Now
@@ -805,7 +781,7 @@ export default function Home() {
 
             {/* RIGHT PRODUCT IMAGE */}
 
-            <div className="order-1 md:order-2 relative flex items-center justify-center py-10 md:py-16">
+            <div className="relative flex items-center justify-center py-10 md:py-16">
 
               {/* Soft background shape */}
 
@@ -847,13 +823,19 @@ export default function Home() {
 
       </section>
 
+      {/* ================= CATEGORIES ================= */}
+
+      
+
       {/* ================= REAL PRODUCTS ================= */}
 
-      <section className="bg-gray-50 py-20 md:py-24">
+      <section 
+        id="shop"
+      className="bg-gray-50 py-20 md:py-24">
 
         <div className="max-w-7xl mx-auto px-5 md:px-8">
 
-          <div className="flex items-end justify-between mb-10">
+          <div className="flex items-end justify-between mb-10" >
 
             <div>
 
@@ -1012,8 +994,6 @@ export default function Home() {
 
       </section>
 
-      {/* ================= CATEGORIES ================= */}
-
       <section
         id="categories"
         className="py-20 md:py-24"
@@ -1044,55 +1024,37 @@ export default function Home() {
 
           </div>
 
-          {loadingCategories ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-            <div className="py-12 text-center text-gray-500">
-              Loading categories...
-            </div>
+            {categories.map((category) => (
 
-          ) : categories.length === 0 ? (
+              <a
+                key={category.name}
+                href="/shop"
+                className="group min-h-47.5 bg-gray-50 border border-gray-100 rounded-2xl p-6 flex flex-col justify-between hover:bg-black hover:text-white transition-all duration-300"
+              >
 
-            <div className="bg-gray-50 border border-gray-100 rounded-2xl py-12 text-center text-gray-500">
-              No categories available right now.
-            </div>
+                <span className="text-3xl text-gray-400 group-hover:text-white transition">
+                  {category.icon}
+                </span>
 
-          ) : (
+                <div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <h3 className="text-lg font-bold">
+                    {category.name}
+                  </h3>
 
-              {categories.map((category, index) => {
-                const icons = ["✦", "◇", "◈", "✧"];
+                  <p className="text-sm text-gray-500 group-hover:text-gray-400 mt-1">
+                    {category.subtitle}
+                  </p>
 
-                return (
-                  <a
-                    key={category.id}
-                    href="/shop"
-                    className="group min-h-47.5 bg-gray-50 border border-gray-100 rounded-2xl p-6 flex flex-col justify-between hover:bg-black hover:text-white transition-all duration-300"
-                  >
+                </div>
 
-                    <span className="text-3xl text-gray-400 group-hover:text-white transition">
-                      {icons[index % icons.length]}
-                    </span>
+              </a>
 
-                    <div>
+            ))}
 
-                      <h3 className="text-lg font-bold">
-                        {category.name}
-                      </h3>
-
-                      <p className="text-sm text-gray-500 group-hover:text-gray-400 mt-1">
-                        Explore {category.name}
-                      </p>
-
-                    </div>
-
-                  </a>
-                );
-              })}
-
-            </div>
-
-          )}
+          </div>
 
         </div>
 

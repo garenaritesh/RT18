@@ -59,9 +59,9 @@ export default function CheckoutPage() {
                 }
 
                 // Load cart
-                const savedCart = JSON.parse(
-                    localStorage.getItem("cart") || "[]"
-                );
+                const cartResponse = await fetch("/api/cart");
+                const cartData = await cartResponse.json();
+                const savedCart = cartData.cart || [];
 
                 if (savedCart.length === 0) {
                     router.push("/cart");
@@ -107,8 +107,11 @@ export default function CheckoutPage() {
     // PAYMENT OFFER
     // =========================
 
-    const COD_CHARGE = 20;
+    const COD_CHARGE = 0;
     const ONLINE_DISCOUNT = 20;
+
+    // Change to true when Razorpay LIVE payments are ready.
+    const ONLINE_PAYMENT_ENABLED = false;
 
     const paymentAdjustment =
         paymentMethod === "COD"
@@ -214,7 +217,7 @@ export default function CheckoutPage() {
                 const data = await response.json();
 
                 if (data.success) {
-                    localStorage.removeItem("cart");
+                    await fetch("/api/cart", { method: "DELETE" });
 
                     router.push(
                         `/order-success?orderId=${data.order.id}`
@@ -239,6 +242,13 @@ export default function CheckoutPage() {
         // =========================
         // RAZORPAY
         // =========================
+
+        // Temporarily keep online payment disabled until Razorpay LIVE mode is ready.
+        if (!ONLINE_PAYMENT_ENABLED) {
+            setLoading(false);
+            alert("Online payment is currently unavailable. Please use Cash on Delivery.");
+            return;
+        }
 
         const loaded = await loadRazorpayScript();
 
@@ -347,9 +357,7 @@ export default function CheckoutPage() {
                             await verifyResponse.json();
 
                         if (verifyData.success) {
-                            localStorage.removeItem(
-                                "cart"
-                            );
+                            await fetch("/api/cart", { method: "DELETE" });
 
                             router.push(
                                 `/order-success?orderId=${verifyData.order.id}`
@@ -608,7 +616,7 @@ export default function CheckoutPage() {
                                         </span>
 
                                         <span className="font-semibold text-gray-900">
-                                            +₹20
+                                            +₹0
                                         </span>
 
                                     </div>
@@ -711,9 +719,9 @@ export default function CheckoutPage() {
 
                                 <label
                                     className={`block border rounded-xl p-4 cursor-pointer transition ${paymentMethod ===
-                                            "COD"
-                                            ? "border-black bg-gray-50"
-                                            : "border-gray-200 hover:border-gray-300"
+                                        "COD"
+                                        ? "border-black bg-gray-50"
+                                        : "border-gray-200 hover:border-gray-300"
                                         }`}
                                 >
 
@@ -748,7 +756,7 @@ export default function CheckoutPage() {
                                                     </p>
 
                                                     <span className="text-[11px] font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                                                        +₹20
+                                                        No extra fee
                                                     </span>
 
                                                 </div>
@@ -773,65 +781,57 @@ export default function CheckoutPage() {
                                     ONLINE PAYMENT
                                 ========================= */}
 
-                                <label
-                                    className={`block border rounded-xl p-4 cursor-pointer transition ${paymentMethod ===
-                                            "RAZORPAY"
-                                            ? "border-black bg-gray-50"
-                                            : "border-gray-200 hover:border-gray-300"
-                                        }`}
-                                >
-
-                                    <div className="flex items-center justify-between gap-3">
-
-                                        <div className="flex items-center gap-3">
-
-                                            <input
-                                                type="radio"
-                                                value="RAZORPAY"
-                                                checked={
-                                                    paymentMethod ===
-                                                    "RAZORPAY"
-                                                }
-                                                onChange={(
-                                                    e
-                                                ) =>
-                                                    setPaymentMethod(
-                                                        e
-                                                            .target
-                                                            .value
-                                                    )
-                                                }
-                                            />
-
-                                            <div>
-
-                                                <div className="flex items-center gap-2 flex-wrap">
-
-                                                    <p className="font-semibold text-gray-900">
-                                                        Online Payment
-                                                    </p>
-
-                                                    <span className="text-[11px] font-semibold bg-green-50 text-green-600 px-2 py-1 rounded-full">
-                                                        ₹20 OFF
-                                                    </span>
-
-                                                </div>
-
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Pay securely with Razorpay
-                                                </p>
-
-                                            </div>
-
+                                <div className="relative overflow-hidden rounded-xl">
+                                    {!ONLINE_PAYMENT_ENABLED && (
+                                        <div className="absolute top-2 right-2 z-10">
+                                            <span className="inline-flex items-center rounded-full bg-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                                                Online Payments • Coming Soon
+                                            </span>
                                         </div>
+                                    )}
 
-                                        <span className="text-lg">
-                                            💳
-                                        </span>
-
-                                    </div>
-
-                                </label>
+                                    <label
+                                        className={`block border rounded-xl p-4 transition ${ONLINE_PAYMENT_ENABLED
+                                                ? `cursor-pointer ${paymentMethod === "RAZORPAY"
+                                                    ? "border-black bg-gray-50"
+                                                    : "border-gray-200 hover:border-gray-300"
+                                                }`
+                                                : "border-gray-200 bg-gray-50/80 cursor-not-allowed"
+                                            }`}
+                                    >
+                                        <div className={!ONLINE_PAYMENT_ENABLED ? "opacity-60 blur-[0.3px]" : ""}>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="radio"
+                                                        value="RAZORPAY"
+                                                        checked={paymentMethod === "RAZORPAY"}
+                                                        disabled={!ONLINE_PAYMENT_ENABLED}
+                                                        onChange={(e) => setPaymentMethod(e.target.value)}
+                                                        className="disabled:cursor-not-allowed"
+                                                    />
+                                                    <div>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <p className="font-semibold text-gray-900">Online Payment</p>
+                                                            <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${ONLINE_PAYMENT_ENABLED
+                                                                    ? "bg-green-50 text-green-600"
+                                                                    : "bg-gray-200 text-gray-600"
+                                                                }`}>
+                                                                {ONLINE_PAYMENT_ENABLED ? "₹20 OFF" : "Available in Future"}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            {ONLINE_PAYMENT_ENABLED
+                                                                ? "Pay securely with Razorpay"
+                                                                : "Online payment will be available soon."}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className="text-lg">💳</span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
 
                             </div>
 
@@ -839,8 +839,14 @@ export default function CheckoutPage() {
 
                             <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
 
-                                {paymentMethod ===
-                                    "COD" ? (
+                                {!ONLINE_PAYMENT_ENABLED ? (
+                                    <p className="text-xs text-gray-600">
+                                        💳 Online payments will be accepted in the future. For now, securely place your order with{" "}
+                                        <span className="font-semibold text-gray-900">
+                                            Cash on Delivery
+                                        </span>.
+                                    </p>
+                                ) : paymentMethod === "COD" ? (
                                     <p className="text-xs text-gray-600">
                                         💡 Prefer online payment?{" "}
                                         <span className="font-semibold text-green-600">

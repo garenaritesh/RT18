@@ -1,39 +1,106 @@
 "use client";
 
-import logo from "../assests/brand_new.png";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import logo from "../assests/brand_new.png";
+
+type User = {
+    id: number;
+    name: string;
+    email: string;
+};
 
 type CartItem = {
     id: number;
     name: string;
     price: number;
-    original_price?: number;
-    discount_price?: number | null;
     image_url: string | null;
     quantity: number;
+    user_id: number;
 };
 
 export default function CartPage() {
     const [cart, setCart] = useState<CartItem[]>([]);
+    const [user, setUser] = useState<User | null>(null);
+    const [checkingAuth, setCheckingAuth] = useState(true);
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [search, setSearch] = useState("");
 
     useEffect(() => {
-        const savedCart = JSON.parse(
-            localStorage.getItem("cart") || "[]"
-        );
+        async function loadUser() {
+            try {
+                const response = await fetch("/api/auth/me");
+                const data = await response.json();
+                setUser(data.success ? data.user : null);
+            } catch (error) {
+                console.error("Auth check error:", error);
+                setUser(null);
+            } finally {
+                setCheckingAuth(false);
+            }
+        }
 
-        setCart(savedCart);
+        loadUser();
     }, []);
 
-    function updateCart(updatedCart: CartItem[]) {
+    async function logout() {
+        try {
+            const response = await fetch("/api/auth/logout", { method: "POST" });
+            const data = await response.json();
+            if (data.success) {
+                setUser(null);
+                setProfileOpen(false);
+                window.location.href = "/";
+            }
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
+    }
+
+    useEffect(() => {
+        async function loadUserCart() {
+            try {
+                const response = await fetch("/api/cart");
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    setCart([]);
+                    return;
+                }
+
+                setCart(data.cart || []);
+            } catch (error) {
+                console.error("Cart loading error:", error);
+                setCart([]);
+            }
+        }
+
+        loadUserCart();
+    }, []);
+
+    async function updateCart(updatedCart: CartItem[]) {
         setCart(updatedCart);
 
-        localStorage.setItem(
-            "cart",
-            JSON.stringify(updatedCart)
-        );
+        try {
+            await Promise.all(
+                updatedCart.map((item) =>
+                    fetch("/api/cart", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            productId: item.id,
+                            quantity: item.quantity,
+                        }),
+                    })
+                )
+            );
 
-        window.dispatchEvent(new Event("cartUpdated"));
+            window.dispatchEvent(new Event("cartUpdated"));
+        } catch (error) {
+            console.error("Cart update error:", error);
+        }
     }
 
     function increaseQuantity(id: number) {
@@ -50,6 +117,13 @@ export default function CartPage() {
     }
 
     function decreaseQuantity(id: number) {
+        const currentItem = cart.find((item) => item.id === id);
+
+        if (currentItem?.quantity === 1) {
+            removeItem(id);
+            return;
+        }
+
         const updatedCart = cart
             .map((item) =>
                 item.id === id
@@ -58,10 +132,17 @@ export default function CartPage() {
                         quantity: item.quantity - 1,
                     }
                     : item
-            )
-            .filter((item) => item.quantity > 0);
+            );
 
-        updateCart(updatedCart);
+        setCart(updatedCart);
+
+        fetch("/api/cart", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productId: id }),
+        })
+            .then(() => window.dispatchEvent(new Event("cartUpdated")))
+            .catch((error) => console.error("Cart removal error:", error));
     }
 
     function removeItem(id: number) {
@@ -74,7 +155,8 @@ export default function CartPage() {
 
     const total = cart.reduce(
         (sum, item) =>
-            sum + Number(item.price) * item.quantity,
+            sum +
+            Number(item.price) * item.quantity,
         0
     );
 
@@ -86,42 +168,101 @@ export default function CartPage() {
     return (
         <main className="min-h-screen bg-gray-50 text-gray-900">
 
-            {/* ================= CART HEADER ================= */}
+            {/* ================= NAVBAR ================= */}
 
-            <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-5 md:px-8">
-                    <div className="h-20 md:h-24 flex items-center justify-between">
-
-                        {/* LOGO */}
-
-                        <a
-                            href="/"
-                            className="shrink-0 flex items-center"
+            <nav className="sticky top-0 z-9999 bg-white/95 backdrop-blur border-b border-gray-100 overflow-visible">
+                <div className="max-w-7xl mx-auto px-4 sm:px-5 md:px-8">
+                    <div className="h-20 flex items-center gap-3 md:gap-5">
+                        <button
+                            type="button"
+                            onClick={() => setMobileMenuOpen((value) => !value)}
+                            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                            aria-expanded={mobileMenuOpen}
+                            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition shrink-0"
                         >
-                            <img
-                                src={logo.src}
-                                alt="RT18"
-                                className="h-40 sm:h-40 md:h-40 w-auto object-contain"
-                            />
-                        </a>
-                        {/* BACK TO SHOPPING */}
+                            <span className="text-xl leading-none">{mobileMenuOpen ? "×" : "☰"}</span>
+                        </button>
 
-                        <Link
-                            href="/shop"
-                            className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-xl border border-gray-200 bg-white text-sm md:text-base font-semibold text-gray-800 hover:bg-gray-50 hover:border-gray-300 transition"
-                        >
-                            <span className="text-lg">←</span>
-                            <span className="hidden sm:inline">
-                                Continue Shopping
-                            </span>
-                            <span className="sm:hidden">
-                                Shopping
-                            </span>
+                        <Link href="/" className="shrink-0 flex items-center">
+                            <img src={logo.src} alt="RT18" className="h-16 sm:h-16 md:h-20 w-auto object-contain" />
                         </Link>
 
+                        <div className="hidden lg:flex items-center gap-6 text-sm font-medium shrink-0">
+                            <Link href="/" className="text-gray-500 hover:text-black transition">Home</Link>
+                            <Link href="/shop" className="text-gray-500 hover:text-black transition">Shop</Link>
+                            <Link href="/#categories" className="text-gray-500 hover:text-black transition">Categories</Link>
+                            <Link href="/about" className="text-gray-500 hover:text-black transition">About Us</Link>
+                        </div>
+
+                        <div className="flex-1" />
+
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                onClick={() => setSearchOpen((value) => !value)}
+                                aria-label="Search products"
+                                className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
+                            >
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" />
+                                </svg>
+                            </button>
+
+                            {!checkingAuth && (user ? (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setProfileOpen((value) => !value)}
+                                        aria-label="Open profile menu"
+                                        className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center font-bold hover:bg-gray-800 transition"
+                                    >
+                                        {user.name.charAt(0).toUpperCase()}
+                                    </button>
+                                    {profileOpen && (
+                                        <div className="absolute right-0 top-14 w-56 bg-white border border-gray-200 rounded-2xl shadow-xl p-2 z-120">
+                                            <div className="px-3 py-3 border-b border-gray-100">
+                                                <p className="font-semibold text-gray-900 truncate">{user.name}</p>
+                                                <p className="text-xs text-gray-500 truncate mt-1">{user.email}</p>
+                                            </div>
+                                            <Link href="/account" className="block px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">My Account</Link>
+                                            <Link href="/account/orders" className="block px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50">My Orders</Link>
+                                            <button onClick={logout} className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50">Logout</button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="hidden sm:flex items-center gap-2">
+                                    <Link href="/login" className="px-3 py-2.5 text-sm font-semibold hover:text-gray-500">Login</Link>
+                                    <Link href="/register" className="bg-black text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition">Register</Link>
+                                </div>
+                            ))}
+
+                            <Link href="/cart" aria-label="Cart" className="relative w-11 h-11 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 transition">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M6 8h12l1 12H5L6 8Z" /><path d="M9 8a3 3 0 0 1 6 0" />
+                                </svg>
+                                {totalItems > 0 && <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">{totalItems > 99 ? "99+" : totalItems}</span>}
+                            </Link>
+                        </div>
                     </div>
+
+                    {searchOpen && (
+                        <div className="border-t border-gray-100 py-3">
+                            <input autoFocus type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products..." className="w-full bg-gray-50 border border-gray-200 rounded-full px-5 py-3 text-sm outline-none focus:border-gray-400 focus:bg-white transition" />
+                        </div>
+                    )}
+
+                    {mobileMenuOpen && (
+                        <div className="lg:hidden border-t border-gray-100 py-3 bg-white relative z-110">
+                            <div className="flex flex-col gap-1 text-sm font-semibold">
+                                <Link href="/" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">Home</Link>
+                                <Link href="/shop" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">Shop</Link>
+                                <Link href="/#categories" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">Categories</Link>
+                                <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">About Us</Link>
+                                <Link href="/account" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-gray-50">My Account</Link>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </header>
+            </nav>
 
             {/* ================= CONTENT ================= */}
 
@@ -132,6 +273,7 @@ export default function CartPage() {
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-10">
 
                     <div>
+
                         <p className="text-xs uppercase tracking-[0.25em] text-gray-400 font-bold">
                             RT18 Shopping
                         </p>
@@ -139,6 +281,7 @@ export default function CartPage() {
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight mt-2">
                             Your Cart
                         </h1>
+
                     </div>
 
                     {cart.length > 0 && (
@@ -249,32 +392,13 @@ export default function CartPage() {
 
                                             </div>
 
-                                            {/* PRICE */}
-
-                                            <div className="mt-2">
-
-                                                {item.original_price &&
-                                                    item.original_price > item.price && (
-                                                        <span className="text-gray-400 text-sm line-through mr-2">
-                                                            ₹
-                                                            {Number(
-                                                                item.original_price
-                                                            ).toFixed(0)}
-                                                        </span>
-                                                    )}
-
-                                                <span className="text-gray-700 text-sm font-semibold">
-                                                    ₹
-                                                    {Number(
-                                                        item.price
-                                                    ).toFixed(0)}
-                                                </span>
-
-                                                <span className="text-gray-500 text-sm ml-1">
-                                                    per item
-                                                </span>
-
-                                            </div>
+                                            <p className="text-gray-500 text-sm mt-2">
+                                                ₹
+                                                {Number(item.price).toFixed(
+                                                    0
+                                                )}{" "}
+                                                per item
+                                            </p>
 
                                             {/* BOTTOM */}
 
@@ -331,9 +455,7 @@ export default function CartPage() {
                                                     <p className="text-xl font-black">
                                                         ₹
                                                         {(
-                                                            Number(
-                                                                item.price
-                                                            ) *
+                                                            Number(item.price) *
                                                             item.quantity
                                                         ).toFixed(0)}
                                                     </p>
@@ -376,7 +498,6 @@ export default function CartPage() {
                                 <div className="space-y-4">
 
                                     <div className="flex justify-between text-gray-600">
-
                                         <span>
                                             Subtotal
                                         </span>
@@ -384,11 +505,9 @@ export default function CartPage() {
                                         <span className="font-semibold text-gray-900">
                                             ₹{total.toFixed(0)}
                                         </span>
-
                                     </div>
 
                                     <div className="flex justify-between text-gray-600">
-
                                         <span>
                                             Delivery
                                         </span>
@@ -396,7 +515,6 @@ export default function CartPage() {
                                         <span className="font-semibold text-green-600">
                                             Calculated at checkout
                                         </span>
-
                                     </div>
 
                                 </div>

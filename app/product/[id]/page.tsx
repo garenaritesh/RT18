@@ -85,20 +85,30 @@ export default function ProductPage() {
     }, []);
 
     useEffect(() => {
-        function updateCartCount() {
-            const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-            const count = cart.reduce(
-                (total: number, item: { quantity?: number }) =>
-                    total + (item.quantity || 0),
-                0
-            );
-            setCartCount(count);
+        async function updateCartCount() {
+            if (!user?.id) {
+                setCartCount(0);
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/cart");
+                const data = await response.json();
+                setCartCount(
+                    (data.cart || []).reduce(
+                        (total: number, item: { quantity?: number }) => total + Number(item.quantity || 0),
+                        0
+                    )
+                );
+            } catch {
+                setCartCount(0);
+            }
         }
 
         updateCartCount();
         window.addEventListener("cartUpdated", updateCartCount);
         return () => window.removeEventListener("cartUpdated", updateCartCount);
-    }, []);
+    }, [user]);
 
     async function logout() {
         try {
@@ -157,7 +167,7 @@ export default function ProductPage() {
         );
     }
 
-    function addToCart() {
+    async function addProductToCart() {
         if (!product) return;
 
         if (product.stock <= 0) {
@@ -170,43 +180,38 @@ export default function ProductPage() {
             return;
         }
 
-        const cart = JSON.parse(
-            localStorage.getItem("cart") || "[]"
-        );
-
-        const existing = cart.find(
-            (item: any) => item.id === product.id
-        );
-
-        if (existing) {
-            if (
-                existing.quantity + quantity >
-                product.stock
-            ) {
-                alert("Maximum available stock reached");
-                return;
-            }
-
-            existing.quantity += quantity;
-        } else {
-            cart.push({
-                id: product.id,
-                name: product.name,
-                price: getSellingPrice(),
-                image_url: product.image_url,
-                quantity,
-            });
+        if (!user?.id) {
+            alert("Please login to add products to your cart");
+            router.push("/login");
+            return false;
         }
 
-        localStorage.setItem(
-            "cart",
-            JSON.stringify(cart)
-        );
-
-        alert("Product added to cart!");
+        try {
+            const response = await fetch("/api/cart", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ productId: product.id, quantity }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                alert(data.message || "Failed to add product to cart");
+                return false;
+            }
+            window.dispatchEvent(new Event("cartUpdated"));
+            return true;
+        } catch {
+            alert("Failed to add product to cart");
+            return false;
+        }
     }
 
-    function buyNow() {
+    async function addToCart() {
+        if (await addProductToCart()) {
+            alert("Product added to cart!");
+        }
+    }
+
+    async function buyNow() {
         if (!product) return;
 
         if (product.stock <= 0) {
@@ -219,40 +224,9 @@ export default function ProductPage() {
             return;
         }
 
-        const cart = JSON.parse(
-            localStorage.getItem("cart") || "[]"
-        );
-
-        const existing = cart.find(
-            (item: any) => item.id === product.id
-        );
-
-        if (existing) {
-            if (
-                existing.quantity + quantity >
-                product.stock
-            ) {
-                alert("Maximum available stock reached");
-                return;
-            }
-
-            existing.quantity += quantity;
-        } else {
-            cart.push({
-                id: product.id,
-                name: product.name,
-                price: getSellingPrice(),
-                image_url: product.image_url,
-                quantity,
-            });
+        if (await addProductToCart()) {
+            router.push("/checkout");
         }
-
-        localStorage.setItem(
-            "cart",
-            JSON.stringify(cart)
-        );
-
-        router.push("/checkout");
     }
 
     if (loading) {
@@ -351,7 +325,7 @@ export default function ProductPage() {
         <main className="min-h-screen bg-gray-50 text-gray-900">
 
             {/* NAVBAR */}
-            <nav className="sticky top-0 z-[5000] bg-white/95 backdrop-blur border-b border-gray-100">
+            <nav className="sticky top-0 z-5000 bg-white/95 backdrop-blur border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-5 md:px-8">
                     {/* MAIN HEADER */}
                     <div className="h-20 flex items-center gap-3 md:gap-5">
@@ -410,7 +384,7 @@ export default function ProductPage() {
                                     </button>
 
                                     {profileOpen && (
-                                        <div className="absolute right-0 top-14 w-56 bg-white border border-gray-200 rounded-2xl shadow-2xl p-2 z-[10000]">
+                                        <div className="absolute right-0 top-14 w-56 bg-white border border-gray-200 rounded-2xl shadow-2xl p-2 z-10000">
                                             <div className="px-3 py-3 border-b border-gray-100">
                                                 <p className="font-semibold truncate">{user.name}</p>
                                                 <p className="text-xs text-gray-500 truncate mt-1">{user.email}</p>
@@ -471,7 +445,7 @@ export default function ProductPage() {
 
                     {/* SEARCH BAR */}
                     {searchOpen && (
-                        <div className="pb-4 relative z-[10000]">
+                        <div className="pb-4 relative z-10000">
                             <div className="relative">
                                 <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <circle cx="11" cy="11" r="7" />
@@ -497,7 +471,7 @@ export default function ProductPage() {
                                 </button>
 
                                 {search.trim() && (
-                                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden z-[10001]">
+                                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden z-10001">
                                         {searchResults.length > 0 ? searchResults.map((item) => (
                                             <a
                                                 key={item.id}
@@ -531,10 +505,10 @@ export default function ProductPage() {
                 {mobileMenuOpen && (
                     <>
                         <div
-                            className="lg:hidden fixed inset-0 top-20 bg-black/20 z-[4998]"
+                            className="lg:hidden fixed inset-0 top-20 bg-black/20 z-4998"
                             onClick={() => setMobileMenuOpen(false)}
                         />
-                        <div className="lg:hidden absolute left-0 right-0 top-full bg-white border-t border-gray-100 shadow-2xl z-[4999] max-h-[calc(100vh-80px)] overflow-y-auto">
+                        <div className="lg:hidden absolute left-0 right-0 top-full bg-white border-t border-gray-100 shadow-2xl z-4999 max-h-[calc(100vh-80px)] overflow-y-auto">
                             <div className="px-5 py-4">
                                 <a href="/" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">Home</a>
                                 <a href="/shop" onClick={() => setMobileMenuOpen(false)} className="block px-5 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition">Shop</a>

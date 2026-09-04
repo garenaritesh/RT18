@@ -219,7 +219,7 @@ export default function ProfilePage() {
                                 onChange={(e) => setAddress(e.target.value)}
                                 rows={4}
                                 className="w-full border border-gray-300 p-3 rounded-xl text-gray-900 outline-none focus:border-black"
-                                placeholder="Full Address"
+                                placeholder="Full Address ( Please Enter your complete address including house number, street, area, etc. )"
                             />
                         </div>
 

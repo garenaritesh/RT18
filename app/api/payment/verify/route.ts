@@ -137,6 +137,12 @@ export async function POST(request: Request) {
       `;
         }
 
+                // Clear only this user's cart after payment and order creation succeed.
+                await sql`
+                        DELETE FROM cart
+                        WHERE user_id = ${userId}
+                `;
+
         return Response.json({
             success: true,
             order,

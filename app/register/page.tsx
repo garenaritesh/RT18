@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import logo from "../assests/brand_new.png";
 
+import logo from "../assests/brand_new.png";
 
 export default function RegisterPage() {
     const [name, setName] = useState("");
@@ -12,8 +12,27 @@ export default function RegisterPage() {
     const [showPassword, setShowPassword] = useState(false);
 
     async function registerUser() {
-        if (!name || !email || !password) {
+        const cleanName = name.trim();
+        const cleanEmail = email.trim().toLowerCase();
+
+        // Required fields validation
+        if (!cleanName || !cleanEmail || !password) {
             alert("Please fill all fields");
+            return;
+        }
+
+        // Gmail validation
+        // Email must be in format: example@gmail.com
+        const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+
+        if (!gmailRegex.test(cleanEmail)) {
+            alert("Please enter a valid Gmail address ending with @gmail.com");
+            return;
+        }
+
+        // Prevent spaces inside email
+        if (/\s/.test(cleanEmail)) {
+            alert("Email address cannot contain spaces");
             return;
         }
 
@@ -26,17 +45,16 @@ export default function RegisterPage() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    name,
-                    email,
+                    name: cleanName,
+                    email: cleanEmail,
                     password,
                 }),
             });
 
             const data = await response.json();
-            
+
             if (data.success) {
                 alert("Registration successful!");
-
                 window.location.href = "/";
             } else {
                 alert(data.message || "Registration failed");
@@ -52,7 +70,6 @@ export default function RegisterPage() {
     return (
         <main className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-
                 <div className="text-center mb-8">
                     <div className="flex justify-center">
                         <img
@@ -72,7 +89,6 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-4">
-
                     <input
                         type="text"
                         placeholder="Full Name"
@@ -100,20 +116,24 @@ export default function RegisterPage() {
 
                         <button
                             type="button"
-                            onClick={() => setShowPassword(!showPassword)}
+                            onClick={() =>
+                                setShowPassword(!showPassword)
+                            }
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black"
                         >
                             {showPassword ? "🙈" : "👁️"}
                         </button>
                     </div>
+
                     <button
                         onClick={registerUser}
                         disabled={loading}
                         className="w-full bg-black text-white p-3 rounded-xl font-semibold disabled:opacity-50"
                     >
-                        {loading ? "Creating Account..." : "Create Account"}
+                        {loading
+                            ? "Creating Account..."
+                            : "Create Account"}
                     </button>
-
                 </div>
 
                 <p className="text-center text-sm text-gray-500 mt-6">
@@ -125,7 +145,6 @@ export default function RegisterPage() {
                         Login
                     </a>
                 </p>
-
             </div>
         </main>
     );
