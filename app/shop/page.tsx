@@ -390,20 +390,7 @@ export default function ShopPage() {
                                 )}
                             </a>
 
-                            {/* MOBILE MENU */}
-                            <button
-                                type="button"
-                                onClick={() => setMobileMenuOpen((v) => !v)}
-                                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-                                aria-expanded={mobileMenuOpen}
-                                className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-gray-900 hover:bg-gray-100 transition"
-                            >
-                                {mobileMenuOpen ? (
-                                    <span className="text-xl leading-none">×</span>
-                                ) : (
-                                    <span className="text-xl leading-none">☰</span>
-                                )}
-                            </button>
+                           
                         </div>
                     </div>
 
