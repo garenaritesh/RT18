@@ -30,6 +30,12 @@ type CartItem = Product & {
     user_id: number;
 };
 
+function sortOutOfStockLast(products: Product[]) {
+    return [...products].sort(
+        (a, b) => Number(Number(a.stock) <= 0) - Number(Number(b.stock) <= 0)
+    );
+}
+
 export default function ShopPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -243,6 +249,9 @@ export default function ShopPage() {
                     Number(a.discount_price || 0)
             );
         }
+
+        // Keep out-of-stock products last without changing the selected sort.
+        result = sortOutOfStockLast(result);
 
         return result;
     }, [products, search, category, sort]);

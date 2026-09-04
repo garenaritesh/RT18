@@ -45,6 +45,12 @@ const categories = [
   },
 ];
 
+function sortOutOfStockLast(products: Product[]) {
+  return [...products].sort(
+    (a, b) => Number(Number(a.stock) <= 0) - Number(Number(b.stock) <= 0)
+  );
+}
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -58,8 +64,10 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
+  const sortedProducts = sortOutOfStockLast(products);
+
   const searchResults = search.trim()
-    ? products
+    ? sortedProducts
       .filter((product) =>
         `${product.name} ${product.category_name || ""}`
           .toLowerCase()
@@ -878,7 +886,7 @@ export default function Home() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
 
-              {products.slice(0, 8).map((product) => {
+              {sortedProducts.slice(0, 8).map((product) => {
 
                 const hasDiscount =
                   product.discount_price !== null &&
