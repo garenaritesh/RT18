@@ -1,5 +1,6 @@
 import AdminLogout from "./AdminLogout";
 import AdminStatusGuard from "./AdminStatusGuard";
+import AdminMobileMenu from "./AdminMobileMenu";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { getAdmin } from "@/lib/admin-auth";
@@ -18,15 +19,15 @@ export default async function AdminLayout({
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 flex">
+        <div className="min-h-screen bg-gray-100 lg:flex">
 
             {/* SIDEBAR */}
 
-            <aside className="w-64 bg-gray-950 text-white min-h-screen fixed left-0 top-0">
+            <aside className="relative w-full bg-gray-950 text-white lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:min-h-screen lg:w-64">
 
                 {/* Logo */}
 
-                <div className="h-20 flex items-center px-6 border-b border-gray-800">
+                <div className="flex h-20 items-center border-b border-gray-800 px-4 sm:px-6">
 
                     <div className="w-10 h-10 bg-white text-black rounded-xl flex items-center justify-center font-black">
                         RT
@@ -46,13 +47,15 @@ export default async function AdminLayout({
 
                 </div>
 
-                {/* Navigation */}
+                <AdminMobileMenu>
 
-                <nav className="p-4 space-y-2">
+                    {/* Navigation */}
+
+                    <nav className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 lg:block lg:space-y-2 lg:p-4">
 
                     <Link
                         href="/admin"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >
                         <span>🏠</span>
                         <span>Home</span>
@@ -60,7 +63,7 @@ export default async function AdminLayout({
 
                     <Link
                         href="/admin/orders"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >
                         <span>📦</span>
                         <span>Orders</span>
@@ -68,7 +71,7 @@ export default async function AdminLayout({
 
                     <Link
                         href="/admin/inventory"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >
                         <span>📋</span>
                         <span>Inventory</span>
@@ -76,7 +79,7 @@ export default async function AdminLayout({
 
                     <Link
                         href="/admin/categories"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >
                         <span>📌</span>
                         <span>Categories</span>
@@ -84,7 +87,7 @@ export default async function AdminLayout({
 
                     <Link
                         href="/admin/products"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >
                         <span>🛍️</span>
                         <span>Products</span>
@@ -92,7 +95,7 @@ export default async function AdminLayout({
 
                     <Link
                         href="/admin/payments"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >
                         <span>💳</span>
                         <span>Payments</span>
@@ -100,7 +103,7 @@ export default async function AdminLayout({
 
                     <Link
                         href="/admin/business"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >
                         <span>📊</span>
                         <span>Business Dashboard</span>
@@ -111,18 +114,18 @@ export default async function AdminLayout({
                     {admin.role === "MAIN_ADMIN" && (
                         <Link
                             href="/admin/admins"
-                            className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-800 transition"
+                            className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                         >
                             <span>👥</span>
                             <span>Admin Management</span>
                         </Link>
                     )}
 
-                </nav>
+                    </nav>
 
-                {/* Bottom */}
+                    {/* Bottom */}
 
-                <div className="absolute bottom-0 left-0 right-0 p-5 border-t border-gray-800">
+                    <div className="border-t border-gray-800 p-4 sm:p-5 lg:absolute lg:bottom-0 lg:left-0 lg:right-0">
 
                     <p className="text-xs text-gray-500">
                         RT18 Admin
@@ -134,19 +137,21 @@ export default async function AdminLayout({
 
                     <AdminLogout />
 
-                </div>
+                    </div>
+
+                </AdminMobileMenu>
 
             </aside>
 
             {/* MAIN CONTENT */}
 
-            <div className="ml-64 flex-1 min-h-screen">
+            <div className="min-h-screen min-w-0 flex-1 lg:ml-64">
 
                 <AdminStatusGuard />
 
                 {/* TOP BAR */}
 
-                <header className="h-20 bg-white border-b flex items-center justify-between px-8">
+                <header className="flex min-h-20 flex-col items-start justify-center gap-3 border-b bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
 
                     <div>
 
@@ -160,7 +165,7 @@ export default async function AdminLayout({
 
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
 
                         <div className="text-right">
 
@@ -186,7 +191,7 @@ export default async function AdminLayout({
 
                 {/* PAGE */}
 
-                <div className="p-8">
+                <div className="min-w-0 p-4 sm:p-6 lg:p-8">
                     {children}
                 </div>
 
