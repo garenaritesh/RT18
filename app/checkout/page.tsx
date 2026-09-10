@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { useRouter } from "next/navigation";
 
 declare global {
@@ -27,11 +28,16 @@ export default function CheckoutPage() {
     const [pincode, setPincode] = useState("");
 
     const [paymentMethod, setPaymentMethod] = useState("COD");
+    const [transactionId, setTransactionId] = useState("");
+    const [paymentProof, setPaymentProof] = useState<File | null>(null);
+    const [upiQr, setUpiQr] = useState("");
 
     const [cart, setCart] = useState<CartItem[]>([]);
 
     const [loading, setLoading] = useState(false);
     const [checkingAuth, setCheckingAuth] = useState(true);
+
+   
 
     // =========================
     // CHECK LOGIN + LOAD USER + CART
@@ -101,7 +107,7 @@ export default function CheckoutPage() {
     // Above ₹500 = FREE
     // ₹500 or below = ₹50
 
-    const shippingCharge = subtotal > 500 ? 0 : 50;
+    const shippingCharge = subtotal > 500 ? 0 : 70;
 
     // =========================
     // PAYMENT OFFER
@@ -126,6 +132,25 @@ export default function CheckoutPage() {
         0,
         baseTotal + paymentAdjustment
     );
+
+    useEffect(() => {
+        async function generateUpiQr() {
+            if (paymentMethod !== "PREPAID") {
+                setUpiQr("");
+                return;
+            }
+
+            const upiUrl = `upi://pay?pa=rkthakre554@oksbi&pn=RT18&am=${totalAmount.toFixed(
+                2
+            )}&cu=INR`;
+
+            const qr = await QRCode.toDataURL(upiUrl);
+
+            setUpiQr(qr);
+        }
+
+        generateUpiQr();
+    }, [paymentMethod, totalAmount]);
 
     // =========================
     // RAZORPAY SCRIPT
@@ -179,6 +204,37 @@ export default function CheckoutPage() {
 
         setLoading(true);
 
+        // =========================
+        // PREPAID VALIDATION
+        // =========================
+
+        if (paymentMethod === "PREPAID") {
+            const cleanTransactionId = transactionId.trim();
+
+            if (!cleanTransactionId) {
+                setLoading(false);
+                alert("Please enter your Transaction ID");
+                return;
+            }
+
+            if (cleanTransactionId.length < 6) {
+                setLoading(false);
+                alert("Please enter a valid Transaction ID");
+                return;
+            }
+
+            if (cleanTransactionId.length > 100) {
+                setLoading(false);
+                alert("Transaction ID is too long");
+                return;
+            }
+
+            if (!paymentProof) {
+                setLoading(false);
+                alert("Please upload your payment screenshot");
+                return;
+            }
+        }
         // =========================
         // COD
         // =========================
@@ -237,7 +293,88 @@ export default function CheckoutPage() {
             }
 
             return;
+
+
+
+            
+
         }
+
+        // =========================
+        // PREPAID
+        // =========================
+
+        if (paymentMethod === "PREPAID") {
+            try {
+                // Upload payment screenshot
+                const formData = new FormData();
+                formData.append("file", paymentProof!);
+
+                const uploadResponse = await fetch("/api/payment-proof", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const uploadData = await uploadResponse.json();
+
+                if (!uploadData.success) {
+                    setLoading(false);
+                    alert(uploadData.message || "Payment screenshot upload failed");
+                    return;
+                }
+
+                // Create prepaid order
+                const response = await fetch("/api/orders", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        name,
+                        phone,
+                        address,
+                        city,
+                        pincode,
+
+                        paymentMethod: "PREPAID",
+
+                        transactionId: transactionId.trim(),
+                        paymentProof: uploadData.url,
+
+                        totalAmount,
+                        subtotal,
+                        shippingCharge,
+                        paymentAdjustment,
+
+                        items: cart,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    await fetch("/api/cart", {
+                        method: "DELETE",
+                    });
+
+                    router.push(
+                        `/order-success?orderId=${data.order.id}`
+                    );
+                } else {
+                    alert(data.message || "Order failed");
+                }
+            } catch (error) {
+                console.error("Prepaid order error:", error);
+                alert("Something went wrong");
+            } finally {
+                setLoading(false);
+            }
+
+            return;
+        }
+        
+
+        
 
         // =========================
         // RAZORPAY
@@ -777,6 +914,112 @@ export default function CheckoutPage() {
 
                                 </label>
 
+                                {/* PREPAID PAYMENT */}
+
+                                <div className="relative overflow-hidden rounded-xl mt-3">
+                                    <label
+                                        className={`block border rounded-xl p-4 transition cursor-pointer ${paymentMethod === "PREPAID"
+                                            ? "border-black bg-gray-50"
+                                            : "border-gray-200 hover:border-gray-300"
+                                            }`}
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="radio"
+                                                    value="PREPAID"
+                                                    checked={paymentMethod === "PREPAID"}
+                                                    onChange={(e) =>
+                                                        setPaymentMethod(e.target.value)
+                                                    }
+                                                />
+
+                                                <div>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="font-semibold text-gray-900">
+                                                            UPI Prepaid
+                                                        </p>
+
+                                                        <span className="text-[11px] font-semibold px-2 py-1 rounded-full bg-green-50 text-green-600">
+                                                            ₹20 OFF
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        Pay using UPI and upload payment proof
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <span className="text-lg">📱</span>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                {paymentMethod === "PREPAID" && (
+                                    <div className="mt-4 rounded-xl border border-gray-200 p-4 bg-white">
+                                        {/* UPI QR */}
+                                        <div className="text-center">
+                                            <p className="font-semibold text-gray-900">
+                                                Scan & Pay using UPI
+                                            </p>
+
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Pay the exact order amount using the QR below
+                                            </p>
+
+                                            <div className="flex justify-center mt-4">
+                                                {upiQr && (
+                                                    <img
+                                                        src={upiQr}
+                                                        alt="RT18 UPI QR Code"
+                                                        className="w-48 h-48 object-contain border rounded-lg"
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Transaction ID */}
+                                        <div className="mt-5">
+                                            <label className="block text-sm font-medium text-gray-900 mb-2">
+                                                Transaction ID / UTR
+                                            </label>
+
+                                            <input
+                                                type="text"
+                                                value={transactionId}
+                                                onChange={(e) =>
+                                                    setTransactionId(e.target.value)
+                                                }
+                                                placeholder="Enter your UPI Transaction ID / UTR"
+                                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-black"
+                                            />
+                                        </div>
+
+                                        {/* Payment Screenshot */}
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium text-gray-900 mb-2">
+                                                Payment Screenshot
+                                            </label>
+
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) =>
+                                                    setPaymentProof(
+                                                        e.target.files?.[0] || null
+                                                    )
+                                                }
+                                                className="w-full text-sm"
+                                            />
+
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                Upload a screenshot showing your successful payment.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* =========================
                                     ONLINE PAYMENT
                                 ========================= */}
@@ -834,6 +1077,8 @@ export default function CheckoutPage() {
                                 </div>
 
                             </div>
+
+                           
 
                             {/* OFFER MESSAGE */}
 

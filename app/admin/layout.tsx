@@ -102,6 +102,14 @@ export default async function AdminLayout({
                     </Link>
 
                     <Link
+                        href="/admin/users"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
+                    >
+                        <span>👤</span>
+                        <span>Users</span>
+                    </Link>
+
+                    <Link
                         href="/admin/business"
                         className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >

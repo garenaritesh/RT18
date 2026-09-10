@@ -192,7 +192,30 @@ export default function Home() {
   }
 
   return (
+    
     <main className="min-h-screen bg-white text-gray-900">
+
+      {/* ================= ANNOUNCEMENT BAR ================= */}
+      <div className="w-full overflow-hidden bg-black py-2.5 text-white">
+        <div className="flex w-max animate-[announcement-slide_18s_linear_infinite] items-center gap-16 whitespace-nowrap text-xs font-semibold uppercase tracking-wide sm:text-sm">
+          <span>FREE SHIPPING ABOVE ₹500</span>
+          <span>PREPAID DISCOUNT ₹25 ON THE TOTAL CHECKOUT AMOUNT</span>
+          <span>FREE SHIPPING ABOVE ₹500</span>
+          <span>PREPAID DISCOUNT ₹25 ON THE TOTAL CHECKOUT AMOUNT</span>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes announcement-slide {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-50%);
+          }
+        }
+      `}</style>
+      
 
       {/* ================= NAVBAR ================= */}
 
@@ -709,7 +732,7 @@ export default function Home() {
 
       {/* HERO SECTION */}
 
-      <section className="bg-[#f7f5f1] overflow-hidden">
+      <section className="hidden bg-[#f7f5f1] overflow-hidden md:block">
 
         <div className="max-w-7xl mx-auto px-5 md:px-8">
 
