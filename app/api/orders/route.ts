@@ -2,6 +2,8 @@ import { sql } from "@/lib/db";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import { getAdmin } from "@/lib/admin-auth";
+import { createToken } from "@/lib/auth";
+import bcrypt from "bcryptjs";
 
 export async function GET() {
   const admin = await getAdmin();
@@ -43,18 +45,17 @@ export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("auth_token")?.value;
-
-    let userId: number | null = null;
-
-    if (token) {
-      const user = await verifyToken(token);
-
-      if (user?.id) {
-        userId = Number(user.id);
-      }
-    }
-
     const body = await request.json();
+    const user = token ? await verifyToken(token) : null;
+    let userId = user?.id ? Number(user.id) : null;
+    const guestCheckout = !userId;
+
+    if (token && !userId) {
+      return Response.json(
+        { success: false, message: "Invalid or expired login session" },
+        { status: 401 }
+      );
+    }
 
     if (
       body.paymentMethod !== "COD" &&
@@ -175,7 +176,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const productIds = body.items.map((item: any) => Number(item.id));
+    const productIds = body.items.map((item: { id: unknown }) => Number(item.id));
 
     if (new Set(productIds).size !== productIds.length) {
       return Response.json(
@@ -301,23 +302,61 @@ FROM products
       );
     }
 
+    const customerName = typeof body.name === "string" ? body.name.trim() : "";
+    const customerEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const customerPhone = typeof body.phone === "string" ? body.phone.trim() : "";
+    const customerAddress = typeof body.address === "string" ? body.address.trim() : "";
+    const customerCity = typeof body.city === "string" ? body.city.trim() : "";
+    const customerPincode = typeof body.pincode === "string" ? body.pincode.trim() : "";
+
     if (
-      !body.name?.trim() ||
-      !body.phone?.trim() ||
-      !body.address?.trim() ||
-      !body.city?.trim() ||
-      !body.pincode?.trim()
+      !customerName ||
+      !customerPhone ||
+      !customerAddress ||
+      !customerCity ||
+      !customerPincode ||
+      (guestCheckout && !customerEmail)
     ) {
       return Response.json(
         {
           success: false,
-          message: "All customer details are required",
+          message: guestCheckout
+            ? "Name, email, phone, address, city, and pincode are required"
+            : "All customer details are required",
         },
         { status: 400 }
       );
     }
 
-    if (!/^\d{10}$/.test(body.phone.trim())) {
+    if (guestCheckout && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+      return Response.json(
+        { success: false, message: "Please enter a valid email address" },
+        { status: 400 }
+      );
+    }
+
+    if (guestCheckout && typeof body.password !== "string") {
+      return Response.json(
+        { success: false, message: "A password is required to create your RT18 account" },
+        { status: 400 }
+      );
+    }
+
+    if (guestCheckout && body.password.length < 6) {
+      return Response.json(
+        { success: false, message: "Password must be at least 6 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (guestCheckout && body.confirmPassword !== body.password) {
+      return Response.json(
+        { success: false, message: "Passwords do not match" },
+        { status: 400 }
+      );
+    }
+
+    if (!/^\d{10}$/.test(customerPhone)) {
       return Response.json(
         {
           success: false,
@@ -327,7 +366,7 @@ FROM products
       );
     }
 
-    if (!/^\d{6}$/.test(body.pincode.trim())) {
+    if (!/^\d{6}$/.test(customerPincode)) {
       return Response.json(
         {
           success: false,
@@ -338,9 +377,9 @@ FROM products
     }
 
     if (
-      body.name.trim().length > 100 ||
-      body.address.trim().length > 500 ||
-      body.city.trim().length > 100
+      customerName.length > 100 ||
+      customerAddress.length > 500 ||
+      customerCity.length > 100
     ) {
       return Response.json(
         {
@@ -349,6 +388,46 @@ FROM products
         },
         { status: 400 }
       );
+    }
+
+    let sessionToken: string | null = null;
+
+    if (guestCheckout) {
+      const existingUser = await sql`
+        SELECT id FROM users WHERE email = ${customerEmail} LIMIT 1
+      `;
+
+      if (existingUser.length > 0) {
+        return Response.json(
+          {
+            success: false,
+            requiresLogin: true,
+            message: "This email is already registered. Please sign in to continue.",
+          },
+          { status: 409 }
+        );
+      }
+
+      const hashedPassword = await bcrypt.hash(body.password, 10);
+      const createdUser = await sql`
+        INSERT INTO users (name, email, phone, password)
+        VALUES (${customerName}, ${customerEmail}, ${customerPhone}, ${hashedPassword})
+        RETURNING id, name, email
+      `;
+
+      if (!createdUser[0]) {
+        return Response.json(
+          { success: false, message: "Unable to create your account" },
+          { status: 500 }
+        );
+      }
+
+      userId = Number(createdUser[0].id);
+      sessionToken = await createToken({
+        id: createdUser[0].id,
+        name: createdUser[0].name,
+        email: createdUser[0].email,
+      });
     }
 
     const result = await sql`
@@ -367,11 +446,11 @@ FROM products
   )
   VALUES (
     ${userId},
-    ${body.name},
-    ${body.phone},
-    ${body.address},
-    ${body.city},
-    ${body.pincode},
+    ${customerName},
+    ${customerPhone},
+    ${customerAddress},
+    ${customerCity},
+    ${customerPincode},
     ${body.paymentMethod},
     ${body.paymentMethod === "PREPAID" ? "PENDING" : "PENDING"},
     ${body.transactionId || null},
@@ -408,16 +487,22 @@ FROM products
 
     // Clear only this user's cart after the order is created.
     if (userId) {
-      await sql`
-        DELETE FROM cart
-        WHERE user_id = ${userId}
-      `;
+      await sql`DELETE FROM cart WHERE user_id = ${userId}`;
     }
 
-    return Response.json({
+    const response = Response.json({
       success: true,
       order,
     });
+
+    if (sessionToken) {
+      response.headers.append(
+        "Set-Cookie",
+        `auth_token=${sessionToken}; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax`
+      );
+    }
+
+    return response;
   } catch (error) {
     console.error("Create order error:", error);
 

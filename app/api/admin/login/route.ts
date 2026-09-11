@@ -1,6 +1,7 @@
 import { sql } from "@/lib/db";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import { createAdminToken } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
     try {
@@ -66,10 +67,16 @@ export async function POST(request: Request) {
         }
 
         const cookieStore = await cookies();
+        const token = await createAdminToken({
+            id: admin.id,
+            name: admin.name,
+            email: admin.email,
+            role: admin.role,
+        });
 
         cookieStore.set(
             "admin_token",
-            String(admin.id),
+            token,
             {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",

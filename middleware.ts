@@ -1,14 +1,29 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-export function middleware(request: NextRequest) {
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
+export async function middleware(request: NextRequest) {
     const adminToken = request.cookies.get(
         "admin_token"
     )?.value;
 
+    let validAdminToken = false;
+
+    if (adminToken) {
+        try {
+            const { payload } = await jwtVerify(adminToken, secret);
+            validAdminToken = payload.type === "admin" && typeof payload.id === "number";
+        } catch {
+            validAdminToken = false;
+        }
+    }
+
     if (
-        !adminToken &&
-        request.nextUrl.pathname !== "/admin/login"
+        !validAdminToken &&
+        request.nextUrl.pathname !== "/admin/login" &&
+        request.nextUrl.pathname !== "/admin/setup"
     ) {
         return NextResponse.redirect(
             new URL("/admin/login", request.url)

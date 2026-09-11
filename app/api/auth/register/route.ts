@@ -2,19 +2,62 @@ import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { createToken } from "@/lib/auth";
 
+function normalizeIdentifier(value: unknown) {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    return value.trim();
+}
+
+function normalizeEmail(value: unknown) {
+    return normalizeIdentifier(value).toLowerCase();
+}
+
+function normalizePhone(value: unknown) {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    return value.replace(/\D/g, "");
+}
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        const name = body.name?.trim();
-        const email = body.email?.trim().toLowerCase();
-        const password = body.password;
+        const name = typeof body.name === "string" ? body.name.trim() : "";
+        const email = normalizeEmail(body.email ?? body.identifier);
+        const phone = normalizePhone(body.phone);
+        const password = typeof body.password === "string" ? body.password : "";
+        const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
 
         if (!name || !email || !password) {
             return Response.json(
                 {
                     success: false,
-                    message: "All fields are required",
+                    message: "Name, email, and password are required",
+                },
+                { status: 400 }
+            );
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return Response.json(
+                {
+                    success: false,
+                    message: "Please enter a valid email address",
+                },
+                { status: 400 }
+            );
+        }
+
+        if (phone && phone.length !== 10) {
+            return Response.json(
+                {
+                    success: false,
+                    message: "Please enter a valid 10-digit phone number",
                 },
                 { status: 400 }
             );
@@ -30,21 +73,44 @@ export async function POST(request: Request) {
             );
         }
 
-        const existingUser = await sql`
-      SELECT id
-      FROM users
-      WHERE email = ${email}
-      LIMIT 1
-    `;
-
-        if (existingUser.length > 0) {
+        if (confirmPassword && password !== confirmPassword) {
             return Response.json(
                 {
                     success: false,
-                    message: "Email already registered",
+                    message: "Passwords do not match",
+                },
+                { status: 400 }
+            );
+        }
+
+        const existingByEmail = await sql`
+            SELECT id FROM users WHERE email = ${email} LIMIT 1
+        `;
+
+        if (existingByEmail.length > 0) {
+            return Response.json(
+                {
+                    success: false,
+                    message: "This email is already registered",
                 },
                 { status: 409 }
             );
+        }
+
+        if (phone) {
+            const existingByPhone = await sql`
+                SELECT id FROM users WHERE phone = ${phone} LIMIT 1
+            `;
+
+            if (existingByPhone.length > 0) {
+                return Response.json(
+                    {
+                        success: false,
+                        message: "This phone number is already registered",
+                    },
+                    { status: 409 }
+                );
+            }
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -53,19 +119,20 @@ export async function POST(request: Request) {
       INSERT INTO users (
         name,
         email,
+        phone,
         password
       )
       VALUES (
         ${name},
-        ${email},
+                ${email},
+                ${phone || null},
         ${hashedPassword}
       )
-      RETURNING id, name, email, created_at
+      RETURNING id, name, email, phone, created_at
     `;
 
         const user = result[0];
 
-        // Create login token
         const token = await createToken({
             id: user.id,
             name: user.name,
@@ -78,7 +145,6 @@ export async function POST(request: Request) {
             user,
         });
 
-        // Set login cookie
         response.headers.append(
             "Set-Cookie",
             `auth_token=${token}; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax`

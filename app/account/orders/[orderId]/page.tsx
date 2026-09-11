@@ -22,12 +22,49 @@ type Order = {
     address: string;
     city: string;
     pincode: string;
+    cancellation_reason: string | null;
+    payment_rejection_reason: string | null;
     items: OrderItem[];
 };
 
 export default function OrderDetailsPage() {
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+    const [invoiceError, setInvoiceError] = useState<string | null>(null);
+
+    async function downloadInvoice() {
+        if (!order) {
+            return;
+        }
+
+        setIsDownloadingInvoice(true);
+        setInvoiceError(null);
+
+        try {
+            const response = await fetch(`/api/auth/my-orders/${order.id}/invoice`);
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Unable to download invoice");
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = `RT18-Order-${order.id}-Invoice.pdf`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Unable to download invoice";
+            setInvoiceError(message);
+        } finally {
+            setIsDownloadingInvoice(false);
+        }
+    }
 
     useEffect(() => {
         async function loadOrder() {
@@ -76,14 +113,21 @@ export default function OrderDetailsPage() {
     const steps = [
         "PLACED",
         "CONFIRMED",
-        "PACKED",
         "SHIPPED",
         "DELIVERED",
     ];
 
+    const trackingStatus = order.order_status === "PENDING"
+        ? "PLACED"
+        : order.order_status;
+
     const currentStep = steps.indexOf(
-        order.order_status
+        trackingStatus
     );
+
+    const displayStatus = order.order_status === "PENDING"
+        ? "PLACED"
+        : order.order_status;
 
     return (
         <main className="min-h-screen bg-gray-100 p-4 md:p-8 lg:p-10">
@@ -117,9 +161,9 @@ export default function OrderDetailsPage() {
                             </p>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <StatusBadge
-                                label={order.order_status}
+                                label={displayStatus}
                             />
 
                             <span
@@ -130,9 +174,22 @@ export default function OrderDetailsPage() {
                             >
                                 {order.payment_status}
                             </span>
+
+                            <button
+                                type="button"
+                                onClick={() => void downloadInvoice()}
+                                disabled={isDownloadingInvoice}
+                                className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:border-black hover:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {isDownloadingInvoice ? "Preparing PDF..." : "Download Invoice"}
+                            </button>
                         </div>
 
                     </div>
+
+                    {invoiceError && (
+                        <p className="mt-3 text-sm text-red-600">{invoiceError}</p>
+                    )}
                 </div>
 
 
@@ -145,7 +202,7 @@ export default function OrderDetailsPage() {
                         </h2>
 
                         <span className="text-xs md:text-sm text-gray-500">
-                            {order.order_status}
+                            {displayStatus}
                         </span>
                     </div>
 
@@ -167,6 +224,18 @@ export default function OrderDetailsPage() {
                                         <p className="text-sm text-red-600 mt-1">
                                             This order has been cancelled.
                                         </p>
+
+                                        <div className="mt-4">
+                                            <p className="text-xs font-bold uppercase tracking-wide text-red-700">
+                                                Cancellation Reason
+                                            </p>
+
+                                            <p className="text-sm text-red-600 mt-1">
+                                                {order.cancellation_reason ||
+                                                    order.payment_rejection_reason ||
+                                                    "Reason not provided."}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -193,7 +262,7 @@ export default function OrderDetailsPage() {
                                     }}
                                 />
 
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-5 md:gap-6 relative">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-5 md:gap-6 relative">
 
                                     {steps.map((step, index) => {
 
@@ -258,11 +327,10 @@ export default function OrderDetailsPage() {
                                 </p>
 
                                 <p className="text-sm text-amber-700 mt-1 leading-relaxed">
-                                    Order cancellation is available only
-                                    before the order reaches the{" "}
-                                    <strong>PACKED</strong> stage.
-                                    Once your order has been packed,
-                                    cancellation may no longer be possible.
+                                    Order cancellation is available before
+                                    the order is shipped. Once your order
+                                    has been shipped, cancellation may no
+                                    longer be possible.
                                 </p>
                             </div>
 
@@ -422,7 +490,9 @@ export default function OrderDetailsPage() {
                                 <p className="font-bold text-gray-900 mt-1">
                                     {order.payment_method === "RAZORPAY"
                                         ? "Razorpay"
-                                        : "Cash on Delivery"}
+                                        : order.payment_method === "PREPAID"
+                                            ? "UPI / Prepaid"
+                                            : "Cash on Delivery"}
                                 </p>
                             </div>
 
@@ -434,7 +504,9 @@ export default function OrderDetailsPage() {
                             >
                                 {order.payment_method === "RAZORPAY"
                                     ? "ONLINE"
-                                    : "COD"}
+                                    : order.payment_method === "PREPAID"
+                                        ? "PREPAID"
+                                        : "COD"}
                             </div>
 
                         </div>
@@ -544,11 +616,11 @@ function StatusBadge({
         PLACED:
             "bg-yellow-100 text-yellow-700 border-yellow-200",
 
+        PENDING:
+            "bg-yellow-100 text-yellow-700 border-yellow-200",
+
         CONFIRMED:
             "bg-blue-100 text-blue-700 border-blue-200",
-
-        PACKED:
-            "bg-purple-100 text-purple-700 border-purple-200",
 
         SHIPPED:
             "bg-indigo-100 text-indigo-700 border-indigo-200",

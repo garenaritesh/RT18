@@ -1,5 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 
+type CloudinaryUploadResult = { secure_url: string };
+
 cloudinary.config({
     secure: true,
 });
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        const result = await new Promise<any>((resolve, reject) => {
+        const result = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
             cloudinary.uploader
                 .upload_stream(
                     {
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
                         if (error) {
                             reject(error);
                         } else {
-                            resolve(result);
+                            resolve(result as CloudinaryUploadResult);
                         }
                     }
                 )

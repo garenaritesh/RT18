@@ -1,7 +1,13 @@
 import { sql } from "@/lib/db";
+import { getAdmin } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
     try {
+        const admin = await getAdmin();
+        if (!admin) {
+            return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
+        }
+
         const body = await request.json();
 
         if (!body.productId || !body.imageUrl) {

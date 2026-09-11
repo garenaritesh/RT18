@@ -8,6 +8,7 @@ export default function AdminLoginPage() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
     async function login() {
@@ -85,20 +86,30 @@ export default function AdminLoginPage() {
                             Password
                         </label>
 
-                        <input
-                            type="password"
-                            placeholder="Admin password"
-                            value={password}
-                            onChange={(e) =>
-                                setPassword(e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    login();
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Admin password"
+                                value={password}
+                                onChange={(e) =>
+                                    setPassword(e.target.value)
                                 }
-                            }}
-                            className="w-full border border-gray-300 p-3 rounded-xl text-gray-900 outline-none focus:border-black"
-                        />
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        login();
+                                    }
+                                }}
+                                className="w-full border border-gray-300 p-3 pr-16 rounded-xl text-gray-900 outline-none focus:border-black"
+                            />
+
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((value) => !value)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 hover:text-black"
+                            >
+                                {showPassword ? "Hide" : "Show"}
+                            </button>
+                        </div>
                     </div>
 
                     <button

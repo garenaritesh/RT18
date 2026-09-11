@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { sql } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 
+type PaymentOrderItem = { id: unknown; quantity: unknown; price: unknown };
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -65,12 +67,86 @@ export async function POST(request: Request) {
             )
             .digest("hex");
 
-        if (generatedSignature !== razorpay_signature) {
+        if (
+            typeof razorpay_signature !== "string" ||
+            !/^[a-f0-9]{64}$/i.test(razorpay_signature) ||
+            !crypto.timingSafeEqual(
+                Buffer.from(generatedSignature, "utf8"),
+                Buffer.from(razorpay_signature, "utf8")
+            )
+        ) {
             return Response.json(
                 {
                     success: false,
                     message: "Payment verification failed",
                 },
+                { status: 400 }
+            );
+        }
+
+        if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
+            return Response.json(
+                { success: false, message: "Invalid order items" },
+                { status: 400 }
+            );
+        }
+
+        let serverSubtotal = 0;
+        const typedItems = items as PaymentOrderItem[];
+        const productIds = typedItems.map((item) => Number(item.id));
+
+        if (
+            new Set(productIds).size !== productIds.length ||
+            productIds.some((id: number) => !Number.isSafeInteger(id) || id <= 0)
+        ) {
+            return Response.json(
+                { success: false, message: "Invalid order items" },
+                { status: 400 }
+            );
+        }
+
+        for (const item of typedItems) {
+            const quantity = Number(item.quantity);
+            const productResult = await sql`
+                SELECT price, discount_price, stock
+                FROM products
+                WHERE id = ${Number(item.id)}
+                LIMIT 1
+            `;
+
+            if (
+                productResult.length === 0 ||
+                !Number.isInteger(quantity) ||
+                quantity <= 0 ||
+                quantity > Number(productResult[0].stock)
+            ) {
+                return Response.json(
+                    { success: false, message: "Invalid or unavailable order item" },
+                    { status: 400 }
+                );
+            }
+
+            const sellingPrice =
+                Number(productResult[0].price) - Number(productResult[0].discount_price || 0);
+
+            if (Number(item.price) !== sellingPrice) {
+                return Response.json(
+                    { success: false, message: "Invalid product price" },
+                    { status: 400 }
+                );
+            }
+
+            serverSubtotal += sellingPrice * quantity;
+        }
+
+        const serverTotalAmount = Math.max(
+            0,
+            serverSubtotal + (serverSubtotal > 500 ? 0 : 70) - 20
+        );
+
+        if (!Number.isFinite(Number(totalAmount)) || Number(totalAmount) !== serverTotalAmount) {
+            return Response.json(
+                { success: false, message: "Order amount mismatch" },
                 { status: 400 }
             );
         }

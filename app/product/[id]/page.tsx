@@ -3,6 +3,8 @@
 import logo from "../../assests/brand_new.png";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { addToGuestCart, getGuestCart } from "@/lib/guest-cart";
+import { getSellingPrice as calculateSellingPrice } from "@/lib/pricing";
 
 type Product = {
     id: number;
@@ -87,7 +89,9 @@ export default function ProductPage() {
     useEffect(() => {
         async function updateCartCount() {
             if (!user?.id) {
-                setCartCount(0);
+                setCartCount(
+                    getGuestCart().reduce((total, item) => total + item.quantity, 0)
+                );
                 return;
             }
 
@@ -161,10 +165,7 @@ export default function ProductPage() {
     function getSellingPrice() {
         if (!product) return 0;
 
-        return (
-            Number(product.price) -
-            Number(product.discount_price || 0)
-        );
+        return calculateSellingPrice(product.price, product.discount_price);
     }
 
     async function addProductToCart() {
@@ -181,9 +182,8 @@ export default function ProductPage() {
         }
 
         if (!user?.id) {
-            alert("Please login to add products to your cart");
-            router.push("/login");
-            return false;
+            addToGuestCart(product.id, quantity);
+            return true;
         }
 
         try {

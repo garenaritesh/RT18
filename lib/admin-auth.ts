@@ -1,5 +1,41 @@
 import { cookies } from "next/headers";
 import { sql } from "@/lib/db";
+import { SignJWT, jwtVerify } from "jose";
+
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
+export async function createAdminToken(admin: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+}) {
+    return await new SignJWT({
+        type: "admin",
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+    })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime("7d")
+        .sign(secret);
+}
+
+async function verifyAdminToken(token: string) {
+    try {
+        const { payload } = await jwtVerify(token, secret);
+
+        if (payload.type !== "admin" || typeof payload.id !== "number") {
+            return null;
+        }
+
+        return payload;
+    } catch {
+        return null;
+    }
+}
 
 export async function getAdmin() {
     try {
@@ -11,9 +47,9 @@ export async function getAdmin() {
             return null;
         }
 
-        const adminId = Number(token);
+        const payload = await verifyAdminToken(token);
 
-        if (!adminId) {
+        if (!payload) {
             return null;
         }
 
@@ -25,7 +61,8 @@ export async function getAdmin() {
                 role,
                 is_active
             FROM admins
-            WHERE id = ${adminId}
+                        WHERE id = ${payload.id}
+                            AND is_active = true
             LIMIT 1
         `;
 

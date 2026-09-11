@@ -4,6 +4,8 @@
 import { useEffect, useState } from "react";
 import heroImage from "./assests/hero.png";
 import logo from "./assests/brand_new.png";
+import { addToGuestCart, getGuestCart } from "@/lib/guest-cart";
+import { getSellingPrice } from "@/lib/pricing";
 
 
 type User = {
@@ -115,7 +117,9 @@ export default function Home() {
   useEffect(() => {
     async function updateCartCount() {
       if (!user) {
-        setCartCount(0);
+        setCartCount(
+          getGuestCart().reduce((total, item) => total + item.quantity, 0)
+        );
         return;
       }
 
@@ -163,8 +167,13 @@ export default function Home() {
 
   async function addToCart(product: Product) {
     if (!user) {
-      alert("Please login to add products to your cart");
-      window.location.href = "/login";
+      if (product.stock <= 0) {
+        alert("This product is out of stock");
+        return;
+      }
+
+      addToGuestCart(product.id, 1);
+      alert("Product added to cart");
       return;
     }
 
@@ -511,9 +520,9 @@ export default function Home() {
 
                             <p className="text-xs text-gray-500 mt-0.5">
                               ₹
-                              {Number(
-                                product.discount_price ??
-                                product.price
+                              {getSellingPrice(
+                                product.price,
+                                product.discount_price
                               ).toFixed(0)}
                             </p>
 
@@ -916,12 +925,10 @@ export default function Home() {
                   Number(product.discount_price) > 0 &&
                   Number(product.discount_price) < Number(product.price);
 
-                const discountAmount = hasDiscount
-                  ? Number(product.discount_price)
-                  : 0;
-
-                const displayPrice =
-                  Number(product.price) - discountAmount;
+                const displayPrice = getSellingPrice(
+                  product.price,
+                  product.discount_price
+                );
                 return (
 
                   <div

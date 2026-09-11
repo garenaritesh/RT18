@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import logo from "../assests/brand_new.png";
+import {
+    getGuestCart,
+    removeFromGuestCart,
+    saveGuestCart,
+} from "@/lib/guest-cart";
+import { getSellingPrice } from "@/lib/pricing";
 
 type User = {
     id: number;
@@ -14,9 +20,10 @@ type CartItem = {
     id: number;
     name: string;
     price: number;
+    discount_price?: number | null;
     image_url: string | null;
     quantity: number;
-    user_id: number;
+    user_id?: number;
 };
 
 export default function CartPage() {
@@ -60,7 +67,46 @@ export default function CartPage() {
     }
 
     useEffect(() => {
-        async function loadUserCart() {
+        async function loadCart() {
+            if (checkingAuth) {
+                return;
+            }
+
+            if (!user) {
+                try {
+                    const [productsResponse] = await Promise.all([
+                        fetch("/api/products"),
+                    ]);
+                    const productsData = await productsResponse.json();
+                    const products = Array.isArray(productsData)
+                        ? productsData
+                        : productsData.products || [];
+                    const guestItems = getGuestCart();
+
+                    setCart(
+                        guestItems
+                            .map((item) => {
+                                const product = products.find(
+                                    (candidate: { id: number }) => Number(candidate.id) === item.id
+                                );
+                                return product
+                                    ? {
+                                        ...product,
+                                        id: item.id,
+                                        price: getSellingPrice(product.price, product.discount_price),
+                                        quantity: item.quantity,
+                                    }
+                                    : null;
+                            })
+                            .filter(Boolean) as CartItem[]
+                    );
+                } catch (error) {
+                    console.error("Guest cart loading error:", error);
+                    setCart([]);
+                }
+                return;
+            }
+
             try {
                 const response = await fetch("/api/cart");
                 const data = await response.json();
@@ -77,11 +123,18 @@ export default function CartPage() {
             }
         }
 
-        loadUserCart();
-    }, []);
+        loadCart();
+    }, [checkingAuth, user]);
 
     async function updateCart(updatedCart: CartItem[]) {
         setCart(updatedCart);
+
+        if (!user) {
+            saveGuestCart(
+                updatedCart.map((item) => ({ id: item.id, quantity: item.quantity }))
+            );
+            return;
+        }
 
         try {
             await Promise.all(
@@ -134,21 +187,19 @@ export default function CartPage() {
                     : item
             );
 
-        setCart(updatedCart);
-
-        fetch("/api/cart", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productId: id }),
-        })
-            .then(() => window.dispatchEvent(new Event("cartUpdated")))
-            .catch((error) => console.error("Cart removal error:", error));
+        updateCart(updatedCart);
     }
 
     function removeItem(id: number) {
         const updatedCart = cart.filter(
             (item) => item.id !== id
         );
+
+        if (!user) {
+            removeFromGuestCart(id);
+            setCart(updatedCart);
+            return;
+        }
 
         updateCart(updatedCart);
     }

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { useRouter } from "next/navigation";
+import { clearGuestCart, getGuestCart } from "@/lib/guest-cart";
+import { getSellingPrice } from "@/lib/pricing";
 
 declare global {
     interface Window {
@@ -14,6 +16,7 @@ type CartItem = {
     id: number;
     name: string;
     price: number;
+    discount_price?: number | null;
     image_url: string | null;
     quantity: number;
 };
@@ -22,10 +25,13 @@ export default function CheckoutPage() {
     const router = useRouter();
 
     const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [address, setAddress] = useState("");
     const [city, setCity] = useState("");
     const [pincode, setPincode] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
 
     const [paymentMethod, setPaymentMethod] = useState("COD");
     const [transactionId, setTransactionId] = useState("");
@@ -36,6 +42,7 @@ export default function CheckoutPage() {
 
     const [loading, setLoading] = useState(false);
     const [checkingAuth, setCheckingAuth] = useState(true);
+    const [authenticatedUser, setAuthenticatedUser] = useState<{ id: number; email: string } | null>(null);
 
    
 
@@ -49,39 +56,55 @@ export default function CheckoutPage() {
                 const response = await fetch("/api/auth/me");
                 const data = await response.json();
 
-                if (!data.success) {
-                    alert("Please login before checkout");
-                    router.push("/login");
-                    return;
-                }
-
-                // Load saved profile details
-                if (data.user) {
+                if (data.success && data.user) {
+                    setAuthenticatedUser(data.user);
                     setName(data.user.name || "");
+                    setEmail(data.user.email || "");
                     setPhone(data.user.phone || "");
                     setAddress(data.user.address || "");
                     setCity(data.user.city || "");
                     setPincode(data.user.pincode || "");
+
+                    const cartResponse = await fetch("/api/cart");
+                    const cartData = await cartResponse.json();
+                    setCart(cartData.cart || []);
+                } else {
+                    const guestItems = getGuestCart();
+                    const productsResponse = await fetch("/api/products");
+                    const productsData = await productsResponse.json();
+                    const products = Array.isArray(productsData)
+                        ? productsData
+                        : productsData.products || [];
+
+                    setCart(
+                        guestItems
+                            .map((item) => {
+                                const product = products.find(
+                                    (candidate: { id: number }) => Number(candidate.id) === item.id
+                                );
+                                return product
+                                    ? {
+                                        ...product,
+                                        id: item.id,
+                                        price: getSellingPrice(product.price, product.discount_price),
+                                        quantity: item.quantity,
+                                    }
+                                    : null;
+                            })
+                            .filter(Boolean) as CartItem[]
+                    );
                 }
 
-                // Load cart
-                const cartResponse = await fetch("/api/cart");
-                const cartData = await cartResponse.json();
-                const savedCart = cartData.cart || [];
-
-                if (savedCart.length === 0) {
+                if (getGuestCart().length === 0 && !data.success) {
                     router.push("/cart");
-                    return;
                 }
-
-                setCart(savedCart);
             } catch (error) {
                 console.error(
                     "Checkout initialization error:",
                     error
                 );
 
-                router.push("/login");
+                setCart([]);
             } finally {
                 setCheckingAuth(false);
             }
@@ -186,19 +209,18 @@ export default function CheckoutPage() {
             return;
         }
 
-        // Address is coming from profile
-        if (
-            !name ||
-            !phone ||
-            !address ||
-            !city ||
-            !pincode
-        ) {
-            alert(
-                "Please complete your delivery address from your profile first."
-            );
+        if (!name || !email || !phone || !address || !city || !pincode) {
+            alert("Please complete all checkout details before placing your order.");
+            return;
+        }
 
-            router.push("/account/profile");
+        if (!authenticatedUser && !password) {
+            alert("Please create a password for your RT18 account.");
+            return;
+        }
+
+        if (!authenticatedUser && password !== confirmPassword) {
+            alert("Passwords do not match.");
             return;
         }
 
@@ -250,10 +272,13 @@ export default function CheckoutPage() {
 
                     body: JSON.stringify({
                         name,
+                        email,
                         phone,
                         address,
                         city,
                         pincode,
+                        password: authenticatedUser ? undefined : password,
+                        confirmPassword: authenticatedUser ? undefined : confirmPassword,
 
                         paymentMethod: "COD",
 
@@ -272,8 +297,18 @@ export default function CheckoutPage() {
 
                 const data = await response.json();
 
+                if (data.requiresLogin) {
+                    alert(data.message);
+                    router.push(`/login?next=${encodeURIComponent("/checkout")}`);
+                    return;
+                }
+
                 if (data.success) {
-                    await fetch("/api/cart", { method: "DELETE" });
+                    if (authenticatedUser) {
+                        await fetch("/api/cart", { method: "DELETE" });
+                    } else {
+                        clearGuestCart();
+                    }
 
                     router.push(
                         `/order-success?orderId=${data.order.id}`
@@ -331,10 +366,13 @@ export default function CheckoutPage() {
                     },
                     body: JSON.stringify({
                         name,
+                        email,
                         phone,
                         address,
                         city,
                         pincode,
+                        password: authenticatedUser ? undefined : password,
+                        confirmPassword: authenticatedUser ? undefined : confirmPassword,
 
                         paymentMethod: "PREPAID",
 
@@ -352,10 +390,18 @@ export default function CheckoutPage() {
 
                 const data = await response.json();
 
+                if (data.requiresLogin) {
+                    alert(data.message);
+                    router.push(`/login?next=${encodeURIComponent("/checkout")}`);
+                    return;
+                }
+
                 if (data.success) {
-                    await fetch("/api/cart", {
-                        method: "DELETE",
-                    });
+                    if (authenticatedUser) {
+                        await fetch("/api/cart", { method: "DELETE" });
+                    } else {
+                        clearGuestCart();
+                    }
 
                     router.push(
                         `/order-success?orderId=${data.order.id}`
@@ -992,7 +1038,7 @@ export default function CheckoutPage() {
                                                     setTransactionId(e.target.value)
                                                 }
                                                 placeholder="Enter your UPI Transaction ID / UTR"
-                                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-black"
+                                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-black placeholder:text-black outline-none focus:border-black"
                                             />
                                         </div>
 
@@ -1010,7 +1056,7 @@ export default function CheckoutPage() {
                                                         e.target.files?.[0] || null
                                                     )
                                                 }
-                                                className="w-full text-sm"
+                                                className="w-full cursor-pointer rounded-xl border border-dashed border-gray-400 bg-gray-50 px-3 py-3 text-sm text-black transition hover:border-black hover:bg-white file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-gray-800"
                                             />
 
                                             <p className="text-xs text-gray-500 mt-2">
@@ -1125,16 +1171,18 @@ export default function CheckoutPage() {
                                 <div>
 
                                     <h2 className="text-xl font-bold text-gray-900">
-                                        Delivery Address
+                                        {authenticatedUser ? "Delivery Address" : "Checkout Details"}
                                     </h2>
 
                                     <p className="text-sm text-gray-500 mt-1">
-                                        Your saved profile address
+                                        {authenticatedUser
+                                            ? "Your saved profile address"
+                                            : "Create your RT18 account while placing this order"}
                                     </p>
 
                                 </div>
 
-                                <button
+                                {authenticatedUser && <button
                                     onClick={() =>
                                         router.push(
                                             "/account/profile"
@@ -1143,10 +1191,11 @@ export default function CheckoutPage() {
                                     className="shrink-0 text-sm font-semibold text-gray-700 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
                                 >
                                     Change
-                                </button>
+                                </button>}
 
                             </div>
 
+                            {authenticatedUser ? <>
                             {/* SAVED ADDRESS CARD */}
 
                             <div className="mt-5 border border-gray-200 rounded-xl p-4 bg-gray-50">
@@ -1216,6 +1265,67 @@ export default function CheckoutPage() {
                                 address? Update it from your
                                 profile.
                             </p>
+
+                            </> : <div className="mt-5 space-y-4">
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(event) => setName(event.target.value)}
+                                    placeholder="Full Name"
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                />
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(event) => setEmail(event.target.value)}
+                                    placeholder="Email"
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                />
+                                <input
+                                    type="tel"
+                                    value={phone}
+                                    onChange={(event) => setPhone(event.target.value)}
+                                    placeholder="Phone Number"
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                />
+                                <input
+                                    type="text"
+                                    value={address}
+                                    onChange={(event) => setAddress(event.target.value)}
+                                    placeholder="Address"
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <input
+                                        type="text"
+                                        value={city}
+                                        onChange={(event) => setCity(event.target.value)}
+                                        placeholder="City"
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={pincode}
+                                        onChange={(event) => setPincode(event.target.value)}
+                                        placeholder="Pincode"
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                    />
+                                </div>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(event) => setPassword(event.target.value)}
+                                    placeholder="Create Password"
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                />
+                                <input
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(event) => setConfirmPassword(event.target.value)}
+                                    placeholder="Confirm Password"
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                />
+                            </div>}
 
                         </div>
 

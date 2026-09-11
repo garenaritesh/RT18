@@ -1,0 +1,728 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 6669
+>>
+stream
+0.5670000000000001 w
+0 G
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 790.8663779527558972 Td
+(RT18 INVOICE GENERATION AUDIT REPORT) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 778.1104724409448181 Td
+(Audit-only review | 10 September 2026) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 754.0159842519684616 Td
+(SCOPE) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 732.7561417322834814 Td
+(Reviewed RT18 source routes, order and customer APIs, order details, admin order system, PDF utilities, product fields,) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 720.0002362204724022 Td
+(database access, package configuration, and branding assets. No application files, schema, dependencies, or configuration) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 707.2443307086614368 Td
+(were modified.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 683.1498425196850803 Td
+(1. EXISTING INVOICE GENERATION) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 661.8899999999999864 Td
+(Invoice generation does not currently exist. There is no customer invoice, invoice download, invoice API, invoice numbering,) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 649.1340944881889072 Td
+(billing record, GST/tax calculation, or order receipt generation.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 625.0396062992125508 Td
+(2. EXISTING PDF FUNCTIONALITY) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 603.7797637795274568 Td
+(RT18 has shipping-label PDF generation only. The single-label page is app/admin/orders/label/[orderId]/page.tsx. The bulk) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 591.0238582677164914 Td
+(route is app/api/admin/shipping-labels/bulk/route.ts. Shared rendering is in lib/shipping-label.ts. Existing PDF output is a) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 578.2679527559055259 Td
+(shipping label, not an invoice.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 554.1734645669291695 Td
+(The project already includes jspdf. No source implementation uses ReportLab or PDFKit.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 530.0789763779526993 Td
+(3. DATA AVAILABLE FOR AN INVOICE) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 508.8191338582676622 Td
+(Order data: id, created_at, user_id, customer_name, phone, address, city, pincode, payment_method, payment_status,) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 496.0632283464566399 Td
+(transaction_id, payment_proof, total_amount, order_status, cancellation_reason, and payment_rejection_reason where) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 483.3073228346456176 Td
+(applicable.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 459.2128346456692611 Td
+(Order item data: order_id, product_id, quantity, and price. Joined order APIs also return product_name and image_url.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 435.1183464566928478 Td
+(Customer profile data: id, name, email, phone, address, city, and pincode. The order customer snapshot is preferable for an) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 422.3624409448818255 Td
+(invoice because it represents the details used at purchase time.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 398.2679527559054691 Td
+(Product data: id, name, price, discount_price, stock, image_url, category_id, category_name through the category join, and) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 385.5120472440944468 Td
+(created_at as used by product queries.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 361.4175590551180335 Td
+(No SKU, HSN, GSTIN, tax rate, or tax classification was found.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 337.323070866141677 Td
+(4. SUBTOTAL, SHIPPING, AND PAYMENT ADJUSTMENT) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 316.0632283464566399 Td
+(Only final total_amount is stored. Separate subtotal, shipping, discount, and payment-adjustment fields are not stored.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 291.9687401574802834 Td
+(Current calculation in app/api/orders/route.ts: selling price equals price minus discount_price; subtotal equals selling price) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 279.2128346456692043 Td
+(multiplied by quantity; shipping is zero when subtotal is greater than 500, otherwise 70; PREPAID adjustment is minus 20;) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 266.4569291338582389 Td
+(total_amount is the calculated final amount.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 242.3624409448817687 Td
+(A basic invoice can reconstruct these values from order items, but the historical breakdown is not independently persisted.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 218.2679527559054122 Td
+(5. GST AND TAX DATA) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 197.0081102362204319 Td
+(No GST or tax data exists in the current source or API contracts. Missing information includes seller legal name and) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 184.2522047244093528 Td
+(address, seller GSTIN, customer GSTIN, HSN or SAC code, tax rate and tax amount, CGST, SGST, IGST, place of supply,) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 171.4962992125983874 Td
+(tax-inclusive or tax-exclusive pricing rules, and immutable historical tax snapshots.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 147.4018110236219172 Td
+(A legally complete tax invoice cannot be reliably produced from the current data.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 123.3073228346455608 Td
+(6. INVOICE NUMBERING) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 102.0474803149605805 Td
+(Invoice numbering does not exist. There is no invoice number field, sequence, prefix, issue date, invoice status, or) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 89.2915748031495013 Td
+(duplicate-prevention mechanism. The order ID is available as an order reference but should not automatically be treated as) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 76.5356692913385359 Td
+(a formal invoice number without an explicit business decision.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 4814
+>>
+stream
+0.5670000000000001 w
+0 G
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 790.8663779527558972 Td
+(7. WHAT IS MISSING) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 769.6065354330708033 Td
+(For a basic downloadable order invoice: invoice PDF layout and rendering, customer-authenticated invoice download route,) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 756.8506299212598378 Td
+(ownership verification, filename convention, seller identity and contact details, invoice date, order reference, item lines,) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 744.0947244094487587 Td
+(quantities, prices, totals, subtotal, shipping, adjustment, final total, payment method, and payment status.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 720.0002362204724022 Td
+(For a proper tax invoice, persistent invoice numbering, tax fields, GST/HSN data, seller/customer billing data, and historical) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 707.2443307086614368 Td
+(price/tax snapshots are also required.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 683.1498425196850803 Td
+(8. RECOMMENDED FILES) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 661.8899999999999864 Td
+(Basic non-tax invoice:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 649.1340944881889072 Td
+(- app/api/auth/my-orders/[orderId]/invoice/route.ts: authenticated customer invoice download endpoint with ownership) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 636.3781889763779418 Td
+(checks.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 623.6222834645668627 Td
+(- lib/invoice.ts: shared PDF generation logic.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 610.8663779527558972 Td
+(- app/account/orders/[orderId]/page.tsx: optional invoice download control, subject to UI approval.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 598.1104724409448181 Td
+(- Optional admin invoice endpoint protected by getAdmin\(\).) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 574.0159842519684616 Td
+(The existing jspdf dependency may be reusable, subject to server-runtime compatibility testing.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 549.9214960629921052 Td
+(9. DATABASE SCHEMA REQUIREMENT) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 528.6616535433070112 Td
+(A basic reconstructed invoice does not strictly require schema changes. It can use existing order, order-item, customer, and) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 515.9057480314959321 Td
+(product data and recalculate subtotal and shipping.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 491.8112598425196325 Td
+(A proper tax or legally auditable invoice should use schema-backed data for invoice number, issue date, tax values,) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 479.0553543307086102 Td
+(HSN/SKU, seller/customer billing details, historical subtotal/shipping/discount breakdown, and immutable snapshots.) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 466.2994488188975879 Td
+(Schema changes would therefore likely be required for that scope.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 442.2049606299212314 Td
+(BRANDING) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 420.9451181102361375 Td
+(The existing RT18 logo is app/assests/brand_new.png. It is already used by site pages, the admin shipping-label page, and) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 408.1892125984251152 Td
+(bulk shipping-label generation. The shipping-label implementation is the closest existing reference for RT18 PDF branding) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 395.4333070866140929 Td
+(and jsPDF setup.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 371.3388188976377364 Td
+(FINAL ASSESSMENT) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 350.0789763779526993 Td
+(RT18 currently supports shipping-label PDFs only. It has enough data for a basic reconstructed order invoice, but it lacks the) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 337.323070866141677 Td
+(tax, GST, SKU/HSN, invoice-number, and immutable accounting data needed for a proper tax invoice.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0 g
+51.0236220472441033 313.2285826771652637 Td
+(AUDIT STATUS) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0 g
+51.0236220472441033 291.9687401574802834 Td
+(Complete. No project source, UI, database, package, configuration, commit, or push changes were made.) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R ]
+/Count 2
+>>
+endobj
+7 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+8 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+9 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+15 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+16 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+19 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+20 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 7 0 R
+/F2 8 0 R
+/F3 9 0 R
+/F4 10 0 R
+/F5 11 0 R
+/F6 12 0 R
+/F7 13 0 R
+/F8 14 0 R
+/F9 15 0 R
+/F10 16 0 R
+/F11 17 0 R
+/F12 18 0 R
+/F13 19 0 R
+/F14 20 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+21 0 obj
+<<
+/Producer (jsPDF 4.2.1)
+/CreationDate (D:20260910224159+05'30')
+>>
+endobj
+22 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 23
+0000000000 65535 f 
+0000011876 00000 n 
+0000013701 00000 n 
+0000000015 00000 n 
+0000000152 00000 n 
+0000006873 00000 n 
+0000007010 00000 n 
+0000011939 00000 n 
+0000012064 00000 n 
+0000012194 00000 n 
+0000012327 00000 n 
+0000012465 00000 n 
+0000012589 00000 n 
+0000012718 00000 n 
+0000012850 00000 n 
+0000012986 00000 n 
+0000013114 00000 n 
+0000013241 00000 n 
+0000013370 00000 n 
+0000013503 00000 n 
+0000013605 00000 n 
+0000013951 00000 n 
+0000014037 00000 n 
+trailer
+<<
+/Size 23
+/Root 22 0 R
+/Info 21 0 R
+/ID [ <B4320B1CC49835BBC0F84681391D134C> <B4320B1CC49835BBC0F84681391D134C> ]
+>>
+startxref
+14141
+%%EOF

@@ -2,12 +2,20 @@ import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { createToken } from "@/lib/auth";
 
+function normalizeIdentifier(value: unknown) {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    return value.trim().toLowerCase();
+}
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        const email = body.email?.trim().toLowerCase();
-        const password = body.password;
+        const email = normalizeIdentifier(body.email ?? body.identifier);
+        const password = typeof body.password === "string" ? body.password : "";
 
         if (!email || !password) {
             return Response.json(
@@ -19,14 +27,24 @@ export async function POST(request: Request) {
             );
         }
 
-        const users = await sql`
-      SELECT id, name, email, password
-      FROM users
-      WHERE email = ${email}
-      LIMIT 1
-    `;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return Response.json(
+                {
+                    success: false,
+                    message: "Please enter a valid email address",
+                },
+                { status: 400 }
+            );
+        }
 
-        if (users.length === 0) {
+                const userResult = await sql`
+                        SELECT id, name, email, phone, password
+                        FROM users
+                        WHERE email = ${email}
+                        LIMIT 1
+                `;
+
+        if (userResult.length === 0) {
             return Response.json(
                 {
                     success: false,
@@ -36,12 +54,8 @@ export async function POST(request: Request) {
             );
         }
 
-        const user = users[0];
-
-        const passwordMatch = await bcrypt.compare(
-            password,
-            user.password
-        );
+        const user = userResult[0];
+        const passwordMatch = await bcrypt.compare(password, user.password);
 
         if (!passwordMatch) {
             return Response.json(
