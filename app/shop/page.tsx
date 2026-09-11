@@ -268,7 +268,6 @@ export default function ShopPage() {
             }
 
             addToGuestCart(product.id, 1);
-            alert("Added to cart!");
             return;
         }
 
@@ -289,7 +288,6 @@ export default function ShopPage() {
                 return;
             }
             window.dispatchEvent(new Event("cartUpdated"));
-            alert("Added to cart!");
         } catch {
             alert("Failed to add product to cart");
         }

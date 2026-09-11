@@ -173,7 +173,6 @@ export default function Home() {
       }
 
       addToGuestCart(product.id, 1);
-      alert("Product added to cart");
       return;
     }
 
@@ -194,7 +193,6 @@ export default function Home() {
         return;
       }
       window.dispatchEvent(new Event("cartUpdated"));
-      alert("Product added to cart");
     } catch {
       alert("Failed to add product to cart");
     }

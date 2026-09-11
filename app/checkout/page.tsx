@@ -32,6 +32,8 @@ export default function CheckoutPage() {
     const [pincode, setPincode] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const [paymentMethod, setPaymentMethod] = useState("COD");
     const [transactionId, setTransactionId] = useState("");
@@ -1311,20 +1313,40 @@ export default function CheckoutPage() {
                                         className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
                                     />
                                 </div>
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(event) => setPassword(event.target.value)}
-                                    placeholder="Create Password"
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
-                                />
-                                <input
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(event) => setConfirmPassword(event.target.value)}
-                                    placeholder="Confirm Password"
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        value={password}
+                                        onChange={(event) => setPassword(event.target.value)}
+                                        placeholder="Create Password"
+                                        className="w-full border border-gray-300 rounded-xl px-4 pr-16 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((visible) => !visible)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-600 hover:text-black"
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? "Hide" : "Show"}
+                                    </button>
+                                </div>
+                                <div className="relative">
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        value={confirmPassword}
+                                        onChange={(event) => setConfirmPassword(event.target.value)}
+                                        placeholder="Confirm Password"
+                                        className="w-full border border-gray-300 rounded-xl px-4 pr-16 py-3 text-sm text-black placeholder:text-gray-500 outline-none focus:border-black"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword((visible) => !visible)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-600 hover:text-black"
+                                        aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                                    >
+                                        {showConfirmPassword ? "Hide" : "Show"}
+                                    </button>
+                                </div>
                             </div>}
 
                         </div>
