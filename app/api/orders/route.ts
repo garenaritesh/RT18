@@ -667,9 +667,11 @@ export async function PATCH(request: Request) {
       });
     }
 
+    let isCodOrder = false;
+
     if (body.status) {
       const currentOrder = await sql`
-        SELECT order_status
+        SELECT order_status, payment_method
         FROM orders
         WHERE id = ${body.id}
         LIMIT 1
@@ -683,6 +685,7 @@ export async function PATCH(request: Request) {
       }
 
       const currentStatus = String(currentOrder[0].order_status);
+      isCodOrder = currentOrder[0].payment_method === "COD";
       const validTransitions: Record<string, string[]> = {
         PLACED: ["CONFIRMED", "CANCELLED"],
         CONFIRMED: ["SHIPPED"],
@@ -727,13 +730,24 @@ export async function PATCH(request: Request) {
         RETURNING *
       `;
     } else {
-      result = await sql`
-        UPDATE orders
-        SET
-          order_status = ${body.status}
-        WHERE id = ${body.id}
-        RETURNING *
-      `;
+      if (body.status === "DELIVERED" && isCodOrder) {
+        result = await sql`
+          UPDATE orders
+          SET
+            order_status = ${body.status},
+            payment_status = 'PAID'
+          WHERE id = ${body.id}
+          RETURNING *
+        `;
+      } else {
+        result = await sql`
+          UPDATE orders
+          SET
+            order_status = ${body.status}
+          WHERE id = ${body.id}
+          RETURNING *
+        `;
+      }
     }
 
     if (result.length === 0) {
