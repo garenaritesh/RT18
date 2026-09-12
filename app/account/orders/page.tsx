@@ -145,7 +145,9 @@ export default function MyOrdersPage() {
                                             />
 
                                             <StatusBadge
-                                                label={order.payment_status}
+                                                label={order.payment_method === "COD" && order.order_status === "DELIVERED"
+                                                    ? "PAID"
+                                                    : order.payment_status}
                                                 type="payment"
                                             />
 

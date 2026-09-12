@@ -128,6 +128,9 @@ export default function OrderDetailsPage() {
     const displayStatus = order.order_status === "PENDING"
         ? "PLACED"
         : order.order_status;
+    const displayPaymentStatus = order.payment_method === "COD" && order.order_status === "DELIVERED"
+        ? "PAID"
+        : order.payment_status;
 
     return (
         <main className="min-h-screen bg-gray-100 p-4 md:p-8 lg:p-10">
@@ -167,12 +170,12 @@ export default function OrderDetailsPage() {
                             />
 
                             <span
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold border ${order.payment_status === "PAID"
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold border ${displayPaymentStatus === "PAID"
                                         ? "bg-green-50 text-green-700 border-green-200"
                                         : "bg-yellow-50 text-yellow-700 border-yellow-200"
                                     }`}
                             >
-                                {order.payment_status}
+                                {displayPaymentStatus}
                             </span>
 
                             <button
@@ -514,7 +517,7 @@ export default function OrderDetailsPage() {
 
                         {/* PAYMENT STATUS */}
                         <div
-                            className={`flex items-center justify-between rounded-xl p-4 mb-4 border ${order.payment_status === "PAID"
+                            className={`flex items-center justify-between rounded-xl p-4 mb-4 border ${displayPaymentStatus === "PAID"
                                     ? "bg-green-50 border-green-200"
                                     : "bg-yellow-50 border-yellow-200"
                                 }`}
@@ -526,22 +529,22 @@ export default function OrderDetailsPage() {
                                 </p>
 
                                 <p
-                                    className={`font-bold mt-1 ${order.payment_status === "PAID"
+                                    className={`font-bold mt-1 ${displayPaymentStatus === "PAID"
                                             ? "text-green-700"
                                             : "text-yellow-700"
                                         }`}
                                 >
-                                    {order.payment_status}
+                                    {displayPaymentStatus}
                                 </p>
                             </div>
 
                             <div
-                                className={`w-9 h-9 rounded-full flex items-center justify-center font-bold ${order.payment_status === "PAID"
+                                className={`w-9 h-9 rounded-full flex items-center justify-center font-bold ${displayPaymentStatus === "PAID"
                                         ? "bg-green-100 text-green-700"
                                         : "bg-yellow-100 text-yellow-700"
                                     }`}
                             >
-                                {order.payment_status === "PAID"
+                                {displayPaymentStatus === "PAID"
                                     ? "✓"
                                     : "!"}
                             </div>
