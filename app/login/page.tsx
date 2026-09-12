@@ -216,6 +216,13 @@ export default function LoginPage() {
                             >
                                 {loading ? "Checking..." : "Continue"}
                             </button>
+
+                            <a
+                                href={`/forgot-password?email=${encodeURIComponent(identifier)}`}
+                                className="block text-center text-sm font-medium text-gray-600 hover:text-black hover:underline"
+                            >
+                                Forgot password?
+                            </a>
                         </>
                     )}
 
@@ -251,6 +258,13 @@ export default function LoginPage() {
                             >
                                 {loading ? "Signing in..." : "Sign In"}
                             </button>
+
+                            <a
+                                href={`/forgot-password?email=${encodeURIComponent(identifier)}`}
+                                className="block text-center text-sm font-medium text-gray-600 hover:text-black hover:underline"
+                            >
+                                Forgot password?
+                            </a>
 
                             <button
                                 type="button"

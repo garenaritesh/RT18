@@ -48,7 +48,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const user = token ? await verifyToken(token) : null;
     let userId = user?.id ? Number(user.id) : null;
-    const guestCheckout = !userId;
 
     if (token && !userId) {
       return Response.json(
@@ -56,6 +55,21 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    if (userId) {
+      const existingUser = await sql`
+        SELECT id
+        FROM users
+        WHERE id = ${userId}
+        LIMIT 1
+      `;
+
+      if (existingUser.length === 0) {
+        userId = null;
+      }
+    }
+
+    const guestCheckout = !userId;
 
     if (
       body.paymentMethod !== "COD" &&
