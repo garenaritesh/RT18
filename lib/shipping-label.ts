@@ -51,49 +51,60 @@ export function addShippingLabel(
     pdf.rect(0, 0, pageWidth, 297, "F");
     pdf.setDrawColor(35, 35, 35);
     pdf.setLineWidth(0.8);
-    pdf.rect(12, 12, 186, 273);
+    pdf.rect(10, 10, 190, 277);
+
+    pdf.setFillColor(20, 20, 20);
+    pdf.rect(10, 10, 190, 14, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(order.payment_method === "COD" ? "COLLECT CASH" : "PREPAID - DO NOT COLLECT CASH", 16, 19);
 
     if (options.logoDataUrl) {
-        pdf.addImage(options.logoDataUrl, "PNG", left, 20, 30, 13, undefined, "FAST");
+        pdf.addImage(options.logoDataUrl, "PNG", left, 31, 35, 15, undefined, "FAST");
     } else {
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(20);
         pdf.setTextColor(20, 20, 20);
-        pdf.text("RT18", left, 31);
+        pdf.text("RT18", left, 43);
     }
 
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
     pdf.setTextColor(95, 95, 95);
-    pdf.text("ONLINE ORDER  /  E-COMMERCE DELIVERY", left, 39);
+    pdf.text("ONLINE ORDER", left, 50);
 
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(17);
     pdf.setTextColor(20, 20, 20);
-    pdf.text(`ORDER #${order.id}`, 160, 27, { align: "right" });
+    pdf.text(`ORDER #${order.id}`, 150, 35, { align: "right" });
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
     pdf.setTextColor(95, 95, 95);
-    pdf.text(order.created_at ? new Date(order.created_at).toLocaleDateString("en-IN") : "", 160, 35, { align: "right" });
+    pdf.text(order.created_at ? new Date(order.created_at).toLocaleDateString("en-IN") : "", 150, 42, { align: "right" });
 
     if (options.qrDataUrl) {
-        pdf.addImage(options.qrDataUrl, "PNG", 169, 40, 16, 16, undefined, "FAST");
+        pdf.addImage(options.qrDataUrl, "PNG", 157, 49, 32, 32, undefined, "FAST");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(6.5);
+        pdf.setTextColor(45, 45, 45);
+        pdf.text("ORDER SCANNER", 173, 85, { align: "center" });
     }
-    addRule(pdf, 47);
+    addRule(pdf, 90);
 
     pdf.setTextColor(25, 25, 25);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9);
-    pdf.text("SHIP TO", left, 58);
+    pdf.text("SHIP TO", left, 101);
     pdf.setFontSize(15);
-    pdf.text(order.customer_name, left, 69);
+    pdf.text(order.customer_name, left, 112);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
-    pdf.text(`Phone: ${order.phone}`, left, 77);
+    pdf.text(`Phone: ${order.phone}`, left, 120);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
-    let addressY = writeWrapped(pdf, order.address, left, 87, contentWidth - 8, 4.8);
-    addressY = writeWrapped(pdf, `${order.city} - ${order.pincode}`, left, addressY + 1, contentWidth - 8, 4.8);
+    let addressY = writeWrapped(pdf, order.address, left, 130, 122, 4.8);
+    addressY = writeWrapped(pdf, `${order.city} - ${order.pincode}`, left, addressY + 1, 122, 4.8);
     const itemsTop = Math.max(addressY + 9, 106);
 
     addRule(pdf, itemsTop);

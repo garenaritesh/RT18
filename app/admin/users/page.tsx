@@ -100,7 +100,23 @@ export default function UsersPage() {
 											{user.email}
 										</td>
 										<td className="whitespace-nowrap px-5 py-4">
-											{user.phone || "Not provided"}
+											{user.phone ? (
+												<div className="flex items-center gap-2">
+													<span>{user.phone}</span>
+													<a
+														href={`https://wa.me/${getWhatsAppNumber(user.phone)}`}
+														target="_blank"
+														rel="noopener noreferrer"
+														aria-label={`Open WhatsApp chat with ${user.name}`}
+														title="Chat on WhatsApp"
+														className="inline-flex items-center justify-center text-[#25D366] transition hover:text-[#128C7E]"
+													>
+														<svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current">
+															<path d="M20.52 3.48A11.82 11.82 0 0 0 12.08 0C5.53 0 .2 5.33.2 11.88c0 2.1.55 4.15 1.59 5.97L.1 24l6.3-1.65a11.86 11.86 0 0 0 5.67 1.44h.01c6.55 0 11.88-5.33 11.88-11.88 0-3.18-1.24-6.17-3.44-8.43ZM12.08 21.75h-.01a9.84 9.84 0 0 1-5.02-1.37l-.36-.21-3.74.98 1-3.65-.23-.37a9.83 9.83 0 0 1-1.51-5.25C2.21 6.44 6.64 2.01 12.08 2.01c2.64 0 5.12 1.03 6.98 2.9a9.83 9.83 0 0 1 2.89 6.99c0 5.44-4.43 9.85-9.87 9.85Zm5.41-7.38c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.96 1.18-.18.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.74-1.64-2.04-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52h-.58c-.2 0-.53.07-.81.38-.28.3-1.06 1.04-1.06 2.54s1.09 2.95 1.24 3.15c.15.2 2.14 3.27 5.18 4.59.72.31 1.28.5 1.72.64.72.23 1.37.2 1.89.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.13-.28-.2-.58-.35Z" />
+														</svg>
+													</a>
+												</div>
+											) : "Not provided"}
 										</td>
 										<td className="whitespace-nowrap px-5 py-4">
 											{new Date(user.created_at).toLocaleDateString()}
@@ -114,4 +130,9 @@ export default function UsersPage() {
 			</section>
 		</main>
 	);
+}
+
+function getWhatsAppNumber(phone: string) {
+	const digits = phone.replace(/\D/g, "");
+	return digits.length === 10 ? `91${digits}` : digits;
 }
