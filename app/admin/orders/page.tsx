@@ -154,7 +154,7 @@ function OrderCard({ order, busy, selectable, selected, onToggleSelection, onSta
         <div><div className="flex items-center gap-3">{selectable && <input type="checkbox" aria-label={`Select order ${order.id}`} checked={selected} onChange={onToggleSelection} disabled={busy} className="h-5 w-5 accent-black" />}<h3 className="text-lg font-bold text-gray-900">Order #{order.id}</h3><StatusBadge status={order.order_status} /></div><p className="text-sm text-gray-500 mt-2">{new Date(order.created_at).toLocaleString()}</p></div>
         <div className="text-left lg:text-right"><p className="text-2xl font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</p><p className="text-sm text-gray-500 mt-1">{order.payment_method === "COD" ? "Cash on Delivery" : "Online Payment"}</p></div>
     </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6"><div className="bg-gray-50 rounded-xl p-5"><p className="text-xs font-semibold text-gray-500 uppercase">Customer</p><p className="font-bold text-gray-900 mt-2">{order.customer_name}</p><div className="flex items-center gap-2 mt-1"><p className="text-gray-700">{order.phone}</p>{order.order_status === "PLACED" && <a href={`https://wa.me/${getWhatsAppNumber(order.phone)}?text=${encodeURIComponent(getWhatsAppMessage(order))}`} target="_blank" rel="noopener noreferrer" aria-label={`Open WhatsApp chat with ${order.customer_name}`} title="Chat on WhatsApp" className="inline-flex items-center justify-center text-[#25D366] hover:text-[#128C7E] transition"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current"><path d="M20.52 3.48A11.82 11.82 0 0 0 12.08 0C5.53 0 .2 5.33.2 11.88c0 2.1.55 4.15 1.59 5.97L.1 24l6.3-1.65a11.86 11.86 0 0 0 5.67 1.44h.01c6.55 0 11.88-5.33 11.88-11.88 0-3.18-1.24-6.17-3.44-8.43ZM12.08 21.75h-.01a9.84 9.84 0 0 1-5.02-1.37l-.36-.21-3.74.98 1-3.65-.23-.37a9.83 9.83 0 0 1-1.51-5.25C2.21 6.44 6.64 2.01 12.08 2.01c2.64 0 5.12 1.03 6.98 2.9a9.83 9.83 0 0 1 2.89 6.99c0 5.44-4.43 9.85-9.87 9.85Zm5.41-7.38c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.96 1.18-.18.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.74-1.64-2.04-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52h-.58c-.2 0-.53.07-.81.38-.28.3-1.06 1.04-1.06 2.54s1.09 2.95 1.24 3.15c.15.2 2.14 3.27 5.18 4.59.72.31 1.28.5 1.72.64.72.23 1.37.2 1.89.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.13-.28-.2-.58-.35Z" /></svg></a>}</div><p className="text-gray-600 mt-2">{order.address}, {order.city} - {order.pincode}</p></div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6"><div className="bg-gray-50 rounded-xl p-5"><p className="text-xs font-semibold text-gray-500 uppercase">Customer</p><p className="font-bold text-gray-900 mt-2">{order.customer_name}</p><div className="flex items-center gap-2 mt-1"><p className="text-gray-700">{order.phone}</p>{order.phone && <a href={`https://wa.me/${getWhatsAppNumber(order.phone)}?text=${encodeURIComponent(getWhatsAppMessage(order))}`} target="_blank" rel="noopener noreferrer" aria-label={`Open WhatsApp chat with ${order.customer_name}`} title="Chat on WhatsApp" className="inline-flex items-center justify-center text-[#25D366] hover:text-[#128C7E] transition"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current"><path d="M20.52 3.48A11.82 11.82 0 0 0 12.08 0C5.53 0 .2 5.33.2 11.88c0 2.1.55 4.15 1.59 5.97L.1 24l6.3-1.65a11.86 11.86 0 0 0 5.67 1.44h.01c6.55 0 11.88-5.33 11.88-11.88 0-3.18-1.24-6.17-3.44-8.43ZM12.08 21.75h-.01a9.84 9.84 0 0 1-5.02-1.37l-.36-.21-3.74.98 1-3.65-.23-.37a9.83 9.83 0 0 1-1.51-5.25C2.21 6.44 6.64 2.01 12.08 2.01c2.64 0 5.12 1.03 6.98 2.9a9.83 9.83 0 0 1 2.89 6.99c0 5.44-4.43 9.85-9.87 9.85Zm5.41-7.38c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.96 1.18-.18.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.74-1.64-2.04-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52h-.58c-.2 0-.53.07-.81.38-.28.3-1.06 1.04-1.06 2.54s1.09 2.95 1.24 3.15c.15.2 2.14 3.27 5.18 4.59.72.31 1.28.5 1.72.64.72.23 1.37.2 1.89.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.13-.28-.2-.58-.35Z" /></svg></a>}</div><p className="text-gray-600 mt-2">{order.address}, {order.city} - {order.pincode}</p></div>
         <div className="bg-gray-50 rounded-xl p-5"><p className="text-xs font-semibold text-gray-500 uppercase">Order Actions</p><div className="space-y-3 mt-3">
             {order.order_status === "PLACED" && <><button disabled={busy} onClick={() => onStatus(order.id, "CONFIRMED")} className="w-full bg-blue-600 text-white py-3 rounded-xl disabled:opacity-60">{busy ? "Updating..." : "Accept Order"}</button><button disabled={busy} onClick={onCancel} className="w-full border border-red-600 text-red-600 py-3 rounded-xl disabled:opacity-60">Decline Order</button></>}
             {order.order_status === "CONFIRMED" && <><button disabled={busy} onClick={() => window.open(`/admin/orders/label/${order.id}`, "_blank")} className="w-full bg-black text-white py-3 rounded-xl">Generate Shipping Label</button><button disabled={busy} onClick={() => onStatus(order.id, "SHIPPED")} className="w-full bg-indigo-600 text-white py-3 rounded-xl disabled:opacity-60">{busy ? "Updating..." : "Ship Order"}</button></>}
@@ -171,6 +171,32 @@ function getWhatsAppNumber(phone: string) {
 }
 
 function getWhatsAppMessage(order: Order) {
+    if (order.order_status === "CONFIRMED") {
+        return `Hi ${order.customer_name}! 👋
+
+Your RT18 order #${order.id} has been confirmed successfully.
+
+Thank you for shopping with RT18! ❤️`;
+    }
+
+    if (order.order_status === "SHIPPED") {
+        return `Hi ${order.customer_name}! 👋
+
+Your RT18 order #${order.id} is out for delivery and will reach you soon.
+
+Please keep your phone available for the delivery executive.
+
+Thank you for shopping with RT18! ❤️`;
+    }
+
+    if (order.order_status === "DELIVERED") {
+        return `Hi ${order.customer_name}! 👋
+
+Your RT18 order #${order.id} has been delivered successfully.
+
+We hope you enjoy your purchase. Thank you for shopping with RT18! ❤️`;
+    }
+
     const products = order.items.map((item) => {
         const itemTotal = Number(item.price) * Number(item.quantity);
         return `Product name :- ${item.product_name}\nQuantity :- ${item.quantity}\nPrice :- ₹${itemTotal.toFixed(2)}`;

@@ -396,6 +396,15 @@ export default function OrderDetailsPage() {
                                         ₹{Number(item.price).toFixed(2)} each
                                     </p>
 
+                                    {order.order_status === "DELIVERED" && (
+                                        <a
+                                            href={`/product/${item.product_id}#reviews`}
+                                            className="mt-3 inline-flex items-center rounded-lg bg-black px-3 py-2 text-xs font-semibold text-white transition hover:bg-gray-800"
+                                        >
+                                            Write a Review
+                                        </a>
+                                    )}
+
                                 </div>
 
                                 <p className="font-bold text-gray-900 text-sm md:text-base shrink-0">
