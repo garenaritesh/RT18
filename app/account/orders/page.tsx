@@ -8,6 +8,7 @@ type OrderItem = {
     quantity: number;
     price: number;
     image_url: string | null;
+    return_status: "PENDING" | "ACCEPTED" | "DECLINED" | null;
 };
 
 type Order = {
@@ -18,12 +19,70 @@ type Order = {
     cancellation_reason: string | null;
     total_amount: number;
     created_at: string;
+    delivered_at: string | null;
     items: OrderItem[];
+};
+
+type ReturnSelection = {
+    orderId: number;
+    productId: number;
+    productName: string;
 };
 
 export default function MyOrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [returningItem, setReturningItem] = useState<string | null>(null);
+    const [returnMessage, setReturnMessage] = useState<string | null>(null);
+    const [returnSelection, setReturnSelection] = useState<ReturnSelection | null>(null);
+    const [currentTime, setCurrentTime] = useState(0);
+
+    useEffect(() => {
+        const updateTime = () => setCurrentTime(Date.now());
+        updateTime();
+        const timer = window.setInterval(updateTime, 60_000);
+        return () => window.clearInterval(timer);
+    }, []);
+
+    function canReturnOrder(order: Order) {
+        if (order.order_status !== "DELIVERED" || !order.delivered_at) return false;
+        return currentTime < new Date(order.delivered_at).getTime() + 5 * 24 * 60 * 60 * 1000;
+    }
+
+    async function requestReturn(orderId: number, productId: number) {
+        const itemKey = `${orderId}-${productId}`;
+        if (returningItem) return false;
+        setReturningItem(itemKey);
+        setReturnMessage(null);
+
+        try {
+            const response = await fetch(`/api/auth/my-orders/${orderId}/return`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ productId }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || "Return request failed");
+
+            setOrders((current) => current.map((order) => order.id !== orderId ? order : {
+                ...order,
+                items: order.items.map((item) => item.product_id === productId ? { ...item, return_status: "PENDING" } : item),
+            }));
+            setReturnMessage("Return request submitted successfully.");
+            return true;
+        } catch (error) {
+            setReturnMessage(error instanceof Error ? error.message : "Return request failed.");
+            return false;
+        } finally {
+            setReturningItem(null);
+        }
+    }
+
+    async function sendReturnRequest() {
+        if (!returnSelection) return;
+        const submitted = await requestReturn(returnSelection.orderId, returnSelection.productId);
+        if (submitted) setReturnSelection(null);
+    }
 
     useEffect(() => {
         async function loadOrders() {
@@ -93,7 +152,7 @@ export default function MyOrdersPage() {
                         </h2>
 
                         <p className="text-gray-500 mt-2">
-                            You haven't placed any orders yet.
+                            You have not placed any orders yet.
                         </p>
 
                         <a
@@ -162,7 +221,7 @@ export default function MyOrdersPage() {
 
                                         <div className="flex items-start gap-4">
 
-                                            <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center text-xl flex-shrink-0">
+                                            <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center text-xl shrink-0">
                                                 ❌
                                             </div>
 
@@ -235,12 +294,36 @@ export default function MyOrdersPage() {
                                                     </p>
 
                                                     {order.order_status === "DELIVERED" && (
-                                                        <a
-                                                            href={`/product/${item.product_id}#reviews`}
-                                                            className="mt-3 inline-flex items-center rounded-lg bg-black px-3 py-2 text-xs font-semibold text-white transition hover:bg-gray-800"
-                                                        >
-                                                            Write a Review
-                                                        </a>
+                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                            <a
+                                                                href={`/product/${item.product_id}#reviews`}
+                                                                className="inline-flex items-center rounded-lg bg-black px-3 py-2 text-xs font-semibold text-white transition hover:bg-gray-800"
+                                                            >
+                                                                Write a Review
+                                                            </a>
+                                                            {item.return_status === "PENDING" ? (
+                                                                <span className="inline-flex items-center rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs font-semibold text-yellow-700">
+                                                                    Return Requested
+                                                                </span>
+                                                            ) : item.return_status === "ACCEPTED" ? (
+                                                                <span className="inline-flex items-center rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-700">
+                                                                    Return Accepted
+                                                                </span>
+                                                            ) : item.return_status === "DECLINED" ? (
+                                                                <span className="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                                                                    Return Declined
+                                                                </span>
+                                                            ) : canReturnOrder(order) ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setReturnSelection({ orderId: order.id, productId: item.product_id, productName: item.product_name })}
+                                                                        disabled={returningItem !== null}
+                                                                        className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                    >
+                                                                        {returningItem === `${order.id}-${item.product_id}` ? "Requesting..." : "Return Product"}
+                                                                    </button>
+                                                            ) : null}
+                                                        </div>
                                                     )}
 
                                                 </div>
@@ -314,7 +397,33 @@ export default function MyOrdersPage() {
 
                 )}
 
+                {returnMessage && <p className="fixed bottom-5 right-5 z-50 rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-xl">{returnMessage}</p>}
+
             </div>
+
+            {returnSelection && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-5" role="dialog" aria-modal="true" aria-labelledby="return-policy-title">
+                    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                        <h2 id="return-policy-title" className="text-xl font-bold text-gray-900">Return Policy</h2>
+                        <p className="mt-1 text-sm text-gray-500">Please review our return policy before sending your request.</p>
+
+                        <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-700">
+                            <p>Returns are available only within 5 days of delivery.</p>
+                            <p className="mt-2">To verify the product condition, please share a clear 360-degree video of <strong>{returnSelection.productName}</strong> after submitting your request.</p>
+                            <p className="mt-2">Our team will review the video and contact you with the next steps. The return will be processed only after the product passes our verification.</p>
+                        </div>
+
+                        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <button type="button" onClick={() => setReturnSelection(null)} disabled={returningItem !== null} className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-black hover:text-black disabled:opacity-60">
+                                Back
+                            </button>
+                            <button type="button" onClick={() => void sendReturnRequest()} disabled={returningItem !== null} className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">
+                                {returningItem ? "Sending Request..." : "Send Request"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </main>
     );

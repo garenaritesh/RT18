@@ -26,6 +26,17 @@ export default function BusinessPage() {
     const [customEnd, setCustomEnd] = useState("");
 
     const [loading, setLoading] = useState(true);
+    const [calculator, setCalculator] = useState({
+        revenue: "",
+        productCost: "",
+        shippingCost: "",
+        packagingCost: "",
+        paymentFees: "",
+        marketingCost: "",
+        returnsCost: "",
+        tax: "",
+        otherCosts: "",
+    });
 
     async function loadData() {
         try {
@@ -197,6 +208,22 @@ export default function BusinessPage() {
         }
 
         return "Custom Date";
+    }
+
+    const calculatorValues = Object.fromEntries(
+        Object.entries(calculator).map(([key, value]) => [key, Number(value) || 0])
+    ) as Record<keyof typeof calculator, number>;
+    const totalOperatingCosts = calculatorValues.shippingCost + calculatorValues.packagingCost + calculatorValues.paymentFees + calculatorValues.marketingCost + calculatorValues.returnsCost + calculatorValues.tax + calculatorValues.otherCosts;
+    const grossProfit = calculatorValues.revenue - calculatorValues.productCost;
+    const netProfit = grossProfit - totalOperatingCosts;
+    const profitMargin = calculatorValues.revenue > 0 ? (netProfit / calculatorValues.revenue) * 100 : 0;
+
+    function updateCalculator(key: keyof typeof calculator, value: string) {
+        setCalculator((current) => ({ ...current, [key]: value.replace(/[^0-9.]/g, "") }));
+    }
+
+    function useDashboardSales() {
+        setCalculator((current) => ({ ...current, revenue: totalSales.toFixed(2) }));
     }
 
     if (loading) {
@@ -455,6 +482,77 @@ export default function BusinessPage() {
 
             </div>
 
+            {/* PROFIT CALCULATOR */}
+            <section className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="border-b border-gray-200 bg-gray-950 px-6 py-5 text-white">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold">Profit Calculator</h2>
+                            <p className="mt-1 text-sm text-gray-400">Enter your complete business costs to calculate final profit.</p>
+                        </div>
+                        <button type="button" onClick={useDashboardSales} className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-gray-200">
+                            Use {getPeriodText()} sales
+                        </button>
+                    </div>
+                </div>
+
+                <div className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
+                    <div>
+                        <div className="mb-5 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-bold text-gray-900">Income and expenses</h3>
+                                <p className="mt-1 text-xs text-gray-500">Use the same period for every amount.</p>
+                            </div>
+                            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">INR</span>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <CalculatorInput label="Total sales / revenue" value={calculator.revenue} onChange={(value) => updateCalculator("revenue", value)} emphasized />
+                            <CalculatorInput label="Product purchase cost" value={calculator.productCost} onChange={(value) => updateCalculator("productCost", value)} />
+                            <CalculatorInput label="Delivery / shipping cost" value={calculator.shippingCost} onChange={(value) => updateCalculator("shippingCost", value)} />
+                            <CalculatorInput label="Packaging cost" value={calculator.packagingCost} onChange={(value) => updateCalculator("packagingCost", value)} />
+                            <CalculatorInput label="Payment gateway / COD fees" value={calculator.paymentFees} onChange={(value) => updateCalculator("paymentFees", value)} />
+                            <CalculatorInput label="Marketing / ads cost" value={calculator.marketingCost} onChange={(value) => updateCalculator("marketingCost", value)} />
+                            <CalculatorInput label="Returns / refunds cost" value={calculator.returnsCost} onChange={(value) => updateCalculator("returnsCost", value)} />
+                            <CalculatorInput label="Tax / GST / other statutory cost" value={calculator.tax} onChange={(value) => updateCalculator("tax", value)} />
+                            <CalculatorInput label="Other expenses" value={calculator.otherCosts} onChange={(value) => updateCalculator("otherCosts", value)} />
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-gray-50 p-5">
+                        <p className="text-sm font-semibold text-gray-500">Final calculation</p>
+                        <div className="mt-5 space-y-4 text-sm">
+                            <CalculatorRow label="Revenue" value={calculatorValues.revenue} />
+                            <CalculatorRow label="Product cost" value={-calculatorValues.productCost} />
+                            <div className="border-t border-gray-200 pt-4"><CalculatorRow label="Gross profit" value={grossProfit} strong /></div>
+                            <CalculatorRow label="Operating costs" value={-totalOperatingCosts} />
+                            <div className={`mt-2 rounded-xl p-4 ${netProfit >= 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                <p className="text-xs font-semibold uppercase tracking-wide">Final net profit</p>
+                                <p className="mt-1 text-3xl font-black">₹{netProfit.toFixed(2)}</p>
+                                <p className="mt-1 text-xs font-semibold">{profitMargin.toFixed(1)}% profit margin</p>
+                            </div>
+                            <div className="flex items-center justify-between border-t border-gray-200 pt-4 text-xs text-gray-500"><span>Total expenses</span><span className="font-bold text-gray-900">₹{(calculatorValues.productCost + totalOperatingCosts).toFixed(2)}</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
     );
+}
+
+function CalculatorInput({ label, value, onChange, emphasized = false }: { label: string; value: string; onChange: (value: string) => void; emphasized?: boolean }) {
+    return (
+        <label className="block">
+            <span className="mb-1.5 block text-sm font-semibold text-gray-700">{label}</span>
+            <div className="flex items-center rounded-xl border border-gray-300 bg-white focus-within:border-black focus-within:ring-2 focus-within:ring-black/10">
+                <span className="pl-3 text-sm text-gray-400">₹</span>
+                <input type="text" inputMode="decimal" value={value} onChange={(event) => onChange(event.target.value)} placeholder="0.00" className={`w-full rounded-xl border-0 px-2 py-3 text-sm text-gray-900 outline-none ${emphasized ? "font-bold" : ""}`} />
+            </div>
+        </label>
+    );
+}
+
+function CalculatorRow({ label, value, strong = false }: { label: string; value: number; strong?: boolean }) {
+    return <div className={`flex items-center justify-between ${strong ? "font-bold text-gray-900" : "text-gray-600"}`}><span>{label}</span><span className={value < 0 ? "text-red-600" : "text-gray-900"}>{value < 0 ? "-" : ""}₹{Math.abs(value).toFixed(2)}</span></div>;
 }

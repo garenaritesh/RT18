@@ -117,6 +117,14 @@ export default async function AdminLayout({
                     </Link>
 
                     <Link
+                        href="/admin/returns"
+                        className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
+                    >
+                        <span>↩️</span>
+                        <span>Return Requests</span>
+                    </Link>
+
+                    <Link
                         href="/admin/business"
                         className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-3 text-sm transition hover:bg-gray-800 sm:gap-3 sm:px-4 sm:text-base"
                     >
@@ -140,7 +148,7 @@ export default async function AdminLayout({
 
                     {/* Bottom */}
 
-                    <div className="border-t border-gray-800 p-4 sm:p-5 lg:absolute lg:bottom-0 lg:left-0 lg:right-0">
+                    <div className="border-t border-gray-800 p-4 sm:p-5">
 
                     <p className="text-xs text-gray-500">
                         RT18 Admin

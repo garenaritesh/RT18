@@ -971,10 +971,21 @@ export default function ProductPage() {
                                 </div>
                             </div>
                             <textarea required value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} placeholder="What did you like about it?" rows={5} className="w-full mt-4 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-black resize-none" />
-                            <label className="block mt-4 text-sm font-semibold cursor-pointer">
-                                Add photos <span className="font-normal text-gray-400">(optional, up to 5)</span>
-                                <input type="file" accept="image/*" multiple onChange={handleReviewPhotos} className="block w-full mt-2 text-xs text-gray-500" />
-                            </label>
+                            <div className="mt-4">
+                                <p className="text-sm font-semibold">
+                                    Add photos <span className="font-normal text-gray-400">(optional, up to 5)</span>
+                                </p>
+                                <label className="relative mt-2 flex min-h-24 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-4 text-center transition hover:border-black hover:bg-white focus-within:border-black focus-within:ring-2 focus-within:ring-black/10">
+                                    <svg className="h-7 w-7 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                                        <path d="M12 16V4" />
+                                        <path d="m7 9 5-5 5 5" />
+                                        <path d="M5 20h14" />
+                                    </svg>
+                                    <span className="mt-2 text-sm font-bold text-gray-800">Choose photos</span>
+                                    <span className="mt-1 text-xs text-gray-500">JPG, PNG or WEBP · up to 5 images</span>
+                                    <input type="file" accept="image/*" multiple onChange={handleReviewPhotos} className="absolute inset-0 cursor-pointer opacity-0" />
+                                </label>
+                            </div>
                             {reviewPhotos.length > 0 && <p className="text-xs text-gray-500 mt-2">{reviewPhotos.length} photo(s) selected</p>}
                             {reviewMessage && <p className="text-sm text-gray-600 mt-4">{reviewMessage}</p>}
                             <button type="submit" disabled={reviewSubmitting} className="w-full bg-black text-white py-3 rounded-xl font-bold mt-5 disabled:bg-gray-300">{reviewSubmitting ? "Submitting..." : "Submit review"}</button>

@@ -47,10 +47,14 @@ const categories = [
   },
 ];
 
-function sortOutOfStockLast(products: Product[]) {
-  return [...products].sort(
-    (a, b) => Number(Number(a.stock) <= 0) - Number(Number(b.stock) <= 0)
-  );
+function getAvailableProductsByPrice(products: Product[]) {
+  return products
+    .filter((product) => Number(product.stock) > 0)
+    .sort(
+      (a, b) =>
+        getSellingPrice(a.price, a.discount_price) -
+        getSellingPrice(b.price, b.discount_price)
+    );
 }
 
 export default function Home() {
@@ -66,7 +70,7 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const sortedProducts = sortOutOfStockLast(products);
+  const sortedProducts = getAvailableProductsByPrice(products);
 
   const searchResults = search.trim()
     ? sortedProducts
@@ -889,7 +893,7 @@ export default function Home() {
 
             <a
               href="/shop"
-              className="hidden sm:block text-sm font-semibold hover:underline"
+              className="text-sm font-semibold hover:underline"
             >
               View All →
             </a>
@@ -902,7 +906,7 @@ export default function Home() {
               Loading products...
             </div>
 
-          ) : products.length === 0 ? (
+          ) : sortedProducts.length === 0 ? (
 
             <div className="bg-white rounded-2xl border border-gray-100 py-20 text-center">
 
@@ -914,6 +918,7 @@ export default function Home() {
 
           ) : (
 
+            <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
 
               {sortedProducts.slice(0, 8).map((product) => {
@@ -995,25 +1000,12 @@ export default function Home() {
                         </p>
                       )}
 
-                      {product.stock <= 0 ? (
-
-                        <button
-                          disabled
-                          className="w-full mt-4 bg-gray-200 text-gray-500 py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed"
-                        >
-                          Out of Stock
-                        </button>
-
-                      ) : (
-
-                        <button
-                          onClick={() => addToCart(product)}
-                          className="w-full mt-4 bg-black text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition"
-                        >
-                          Add to Cart
-                        </button>
-
-                      )}
+                      <button
+                        onClick={() => addToCart(product)}
+                        className="w-full mt-4 bg-black text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition"
+                      >
+                        Add to Cart
+                      </button>
 
                     </div>
 
@@ -1023,6 +1015,18 @@ export default function Home() {
               })}
 
             </div>
+
+            {sortedProducts.length > 8 && (
+              <div className="mt-8 text-center sm:hidden">
+                <a
+                  href="/shop"
+                  className="inline-flex items-center justify-center rounded-xl bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+                >
+                  View All Products →
+                </a>
+              </div>
+            )}
+            </>
 
           )}
 

@@ -130,16 +130,16 @@ export default function CheckoutPage() {
     // SHIPPING
     // =========================
     // Above ₹500 = FREE
-    // ₹500 or below = ₹50
+    // ₹500 or below = ₹99
 
-    const shippingCharge = subtotal > 500 ? 0 : 70;
+    const shippingCharge = subtotal > 500 ? 0 : 99;
 
     // =========================
     // PAYMENT OFFER
     // =========================
 
     const COD_CHARGE = 0;
-    const ONLINE_DISCOUNT = 20;
+    const ONLINE_DISCOUNT = subtotal >= 500 ? 50 : subtotal > 250 ? 30 : 20;
 
     // Change to true when Razorpay LIVE payments are ready.
     const ONLINE_PAYMENT_ENABLED = false;
@@ -454,7 +454,7 @@ export default function CheckoutPage() {
                 },
 
                 body: JSON.stringify({
-                    // Online payment gets ₹20 OFF
+                    // Prepaid discount is based on the checkout subtotal.
                     amount: totalAmount,
                 }),
             });
@@ -813,7 +813,7 @@ export default function CheckoutPage() {
                                         </span>
 
                                         <span className="font-semibold text-green-600">
-                                            -₹20
+                                            -₹{ONLINE_DISCOUNT}
                                         </span>
 
                                     </div>
@@ -989,7 +989,7 @@ export default function CheckoutPage() {
                                                         </p>
 
                                                         <span className="text-[11px] font-semibold px-2 py-1 rounded-full bg-green-50 text-green-600">
-                                                            ₹20 OFF
+                                                            ₹{ONLINE_DISCOUNT} OFF
                                                         </span>
                                                     </div>
 
@@ -1108,7 +1108,7 @@ export default function CheckoutPage() {
                                                                     ? "bg-green-50 text-green-600"
                                                                     : "bg-gray-200 text-gray-600"
                                                                 }`}>
-                                                                {ONLINE_PAYMENT_ENABLED ? "₹20 OFF" : "Available in Future"}
+                                                                {ONLINE_PAYMENT_ENABLED ? `₹${ONLINE_DISCOUNT} OFF` : "Available in Future"}
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-gray-500 mt-1">
@@ -1143,7 +1143,7 @@ export default function CheckoutPage() {
                                     <p className="text-xs text-gray-600">
                                         💡 Prefer online payment?{" "}
                                         <span className="font-semibold text-green-600">
-                                            Save ₹20
+                                            Save ₹{ONLINE_DISCOUNT}
                                         </span>{" "}
                                         by paying online.
                                     </p>
@@ -1151,7 +1151,7 @@ export default function CheckoutPage() {
                                     <p className="text-xs text-gray-600">
                                         🎉 You're saving{" "}
                                         <span className="font-semibold text-green-600">
-                                            ₹20
+                                            ₹{ONLINE_DISCOUNT}
                                         </span>{" "}
                                         with online payment.
                                     </p>

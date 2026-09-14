@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { sql } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
+import { ensureOrderStatusTimestamps } from "@/lib/order-status";
 
 export async function GET(
     request: Request,
@@ -9,6 +10,7 @@ export async function GET(
     }
 ) {
     try {
+        await ensureOrderStatusTimestamps();
         // Get login cookie
         const cookieStore = await cookies();
         const token = cookieStore.get("auth_token")?.value;

@@ -21,7 +21,7 @@ export default function AdminMobileMenu({ children }: AdminMobileMenuProps) {
                 {open ? "✕" : "☰"}
             </button>
 
-            <div className={`${open ? "block" : "hidden"} lg:block`}>
+            <div className={`${open ? "block" : "hidden"} max-h-[calc(100vh-5rem)] overflow-y-auto lg:block`}>
                 {children}
             </div>
         </>

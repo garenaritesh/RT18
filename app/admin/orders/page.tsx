@@ -8,6 +8,8 @@ type Order = {
     payment_method: string; payment_status: string; payment_rejection_reason: string | null;
     transaction_id: string | null; payment_proof: string | null; order_status: string;
     cancellation_reason: string | null; total_amount: number; items: OrderItem[]; created_at: string;
+    placed_at: string | null; confirmed_at: string | null; shipped_at: string | null;
+    delivered_at: string | null; cancelled_at: string | null;
 };
 type Tab = "ALL" | "PLACED" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
@@ -151,7 +153,7 @@ export default function OrdersPage() {
 
 function OrderCard({ order, busy, selectable, selected, onToggleSelection, onStatus, onCancel }: { order: Order; busy: boolean; selectable: boolean; selected: boolean; onToggleSelection: () => void; onStatus: (id: number, status: "CONFIRMED" | "SHIPPED" | "DELIVERED") => void; onCancel: () => void }) {
     return <div className="p-6 hover:bg-gray-50 transition"><div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
-        <div><div className="flex items-center gap-3">{selectable && <input type="checkbox" aria-label={`Select order ${order.id}`} checked={selected} onChange={onToggleSelection} disabled={busy} className="h-5 w-5 accent-black" />}<h3 className="text-lg font-bold text-gray-900">Order #{order.id}</h3><StatusBadge status={order.order_status} /></div><p className="text-sm text-gray-500 mt-2">{new Date(order.created_at).toLocaleString()}</p></div>
+        <div><div className="flex items-center gap-3">{selectable && <input type="checkbox" aria-label={`Select order ${order.id}`} checked={selected} onChange={onToggleSelection} disabled={busy} className="h-5 w-5 accent-black" />}<h3 className="text-lg font-bold text-gray-900">Order #{order.id}</h3><StatusBadge status={order.order_status} /></div><p className="text-sm text-gray-500 mt-2">{formatIndianDateTime(order.placed_at || order.created_at)}</p><div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500"><span>Pending: {formatIndianDateTime(order.placed_at || order.created_at)}</span>{order.confirmed_at && <span>Confirmed: {formatIndianDateTime(order.confirmed_at)}</span>}{order.shipped_at && <span>Shipped: {formatIndianDateTime(order.shipped_at)}</span>}{order.delivered_at && <span>Delivered: {formatIndianDateTime(order.delivered_at)}</span>}{order.cancelled_at && <span>Cancelled: {formatIndianDateTime(order.cancelled_at)}</span>}</div></div>
         <div className="text-left lg:text-right"><p className="text-2xl font-bold text-gray-900">₹{Number(order.total_amount).toFixed(2)}</p><p className="text-sm text-gray-500 mt-1">{order.payment_method === "COD" ? "Cash on Delivery" : "Online Payment"}</p></div>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6"><div className="bg-gray-50 rounded-xl p-5"><p className="text-xs font-semibold text-gray-500 uppercase">Customer</p><p className="font-bold text-gray-900 mt-2">{order.customer_name}</p><div className="flex items-center gap-2 mt-1"><p className="text-gray-700">{order.phone}</p>{order.phone && <a href={`https://wa.me/${getWhatsAppNumber(order.phone)}?text=${encodeURIComponent(getWhatsAppMessage(order))}`} target="_blank" rel="noopener noreferrer" aria-label={`Open WhatsApp chat with ${order.customer_name}`} title="Chat on WhatsApp" className="inline-flex items-center justify-center text-[#25D366] hover:text-[#128C7E] transition"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current"><path d="M20.52 3.48A11.82 11.82 0 0 0 12.08 0C5.53 0 .2 5.33.2 11.88c0 2.1.55 4.15 1.59 5.97L.1 24l6.3-1.65a11.86 11.86 0 0 0 5.67 1.44h.01c6.55 0 11.88-5.33 11.88-11.88 0-3.18-1.24-6.17-3.44-8.43ZM12.08 21.75h-.01a9.84 9.84 0 0 1-5.02-1.37l-.36-.21-3.74.98 1-3.65-.23-.37a9.83 9.83 0 0 1-1.51-5.25C2.21 6.44 6.64 2.01 12.08 2.01c2.64 0 5.12 1.03 6.98 2.9a9.83 9.83 0 0 1 2.89 6.99c0 5.44-4.43 9.85-9.87 9.85Zm5.41-7.38c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.96 1.18-.18.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.74-1.64-2.04-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52h-.58c-.2 0-.53.07-.81.38-.28.3-1.06 1.04-1.06 2.54s1.09 2.95 1.24 3.15c.15.2 2.14 3.27 5.18 4.59.72.31 1.28.5 1.72.64.72.23 1.37.2 1.89.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.13-.28-.2-.58-.35Z" /></svg></a>}</div><p className="text-gray-600 mt-2">{order.address}, {order.city} - {order.pincode}</p></div>
@@ -163,6 +165,23 @@ function OrderCard({ order, busy, selectable, selected, onToggleSelection, onSta
             {order.order_status === "CANCELLED" && <p className="text-sm text-red-700">Cancelled: {order.cancellation_reason || "No reason provided"}</p>}
         </div></div></div>
     <PaymentDetails order={order} /><div className="mt-6"><p className="text-sm font-bold text-gray-900 mb-3">Ordered Products</p><div className="space-y-3">{order.items.map((item, index) => <div key={`${order.id}-${item.product_id}-${index}`} className="flex items-center gap-4 border border-gray-200 rounded-xl p-3">{item.image_url ? <img src={item.image_url} alt={item.product_name} className="w-16 h-16 object-cover rounded-lg" /> : <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">📦</div>}<div className="flex-1"><p className="font-semibold text-gray-900">{item.product_name}</p><p className="text-sm text-gray-500 mt-1">Qty: {item.quantity} × ₹{Number(item.price).toFixed(2)}</p></div><p className="font-bold text-gray-900">₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</p></div>)}</div></div></div>;
+}
+
+function formatIndianDateTime(timestamp: string | null) {
+    if (!timestamp) return "Not yet";
+
+    const parts = new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+    }).formatToParts(new Date(timestamp));
+    const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value || "";
+
+    return `${value("day")} ${value("month")} ${value("year")}, ${value("hour")}.${value("minute")} ${value("dayPeriod").toUpperCase()}`;
 }
 
 function getWhatsAppNumber(phone: string) {

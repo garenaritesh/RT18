@@ -4,6 +4,7 @@ import { verifyToken } from "@/lib/auth";
 import { getAdmin } from "@/lib/admin-auth";
 import { createToken } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+import { ensureOrderStatusTimestamps } from "@/lib/order-status";
 
 export async function GET() {
   const admin = await getAdmin();
@@ -14,6 +15,8 @@ export async function GET() {
       { status: 403 }
     );
   }
+
+  await ensureOrderStatusTimestamps();
 
 
   const orders = await sql`
@@ -43,6 +46,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await ensureOrderStatusTimestamps();
     const cookieStore = await cookies();
     const token = cookieStore.get("auth_token")?.value;
     const body = await request.json();
@@ -296,10 +300,12 @@ FROM products
     }
 
     const serverShippingCharge =
-      serverSubtotal > 500 ? 0 : 70;
+      serverSubtotal > 500 ? 0 : 99;
 
+    const prepaidDiscount =
+      serverSubtotal >= 500 ? 50 : serverSubtotal > 250 ? 30 : 20;
     const serverPaymentAdjustment =
-      body.paymentMethod === "PREPAID" ? -20 : 0;
+      body.paymentMethod === "PREPAID" ? -prepaidDiscount : 0;
 
     const serverTotalAmount = Math.max(
       0,
@@ -456,7 +462,8 @@ FROM products
     payment_status,
     transaction_id,
     payment_proof,
-    total_amount
+    total_amount,
+    placed_at
   )
   VALUES (
     ${userId},
@@ -469,7 +476,8 @@ FROM products
     ${body.paymentMethod === "PREPAID" ? "PENDING" : "PENDING"},
     ${body.transactionId || null},
     ${body.paymentProof || null},
-    ${serverTotalAmount}
+    ${serverTotalAmount},
+    NOW()
   )
   RETURNING *
 `;
@@ -545,6 +553,8 @@ export async function PATCH(request: Request) {
         { status: 403 }
       );
     }
+
+    await ensureOrderStatusTimestamps();
 
     let result;
 
@@ -645,7 +655,8 @@ export async function PATCH(request: Request) {
             payment_status = 'REJECTED',
             payment_rejection_reason = ${body.reason},
             order_status = 'CANCELLED',
-            cancellation_reason = ${body.reason}
+            cancellation_reason = ${body.reason},
+            cancelled_at = NOW()
         WHERE id = ${body.id}
   AND payment_status = 'PENDING'
         RETURNING *
@@ -725,7 +736,8 @@ export async function PATCH(request: Request) {
         UPDATE orders
         SET
           order_status = ${body.status},
-          cancellation_reason = ${body.cancellationReason.trim()}
+          cancellation_reason = ${body.cancellationReason.trim()},
+          cancelled_at = NOW()
         WHERE id = ${body.id}
         RETURNING *
       `;
@@ -735,7 +747,8 @@ export async function PATCH(request: Request) {
           UPDATE orders
           SET
             order_status = ${body.status},
-            payment_status = 'PAID'
+            payment_status = 'PAID',
+            delivered_at = NOW()
           WHERE id = ${body.id}
           RETURNING *
         `;
@@ -743,7 +756,10 @@ export async function PATCH(request: Request) {
         result = await sql`
           UPDATE orders
           SET
-            order_status = ${body.status}
+            order_status = ${body.status},
+            confirmed_at = CASE WHEN ${body.status} = 'CONFIRMED' THEN NOW() ELSE confirmed_at END,
+            shipped_at = CASE WHEN ${body.status} = 'SHIPPED' THEN NOW() ELSE shipped_at END,
+            delivered_at = CASE WHEN ${body.status} = 'DELIVERED' THEN NOW() ELSE delivered_at END
           WHERE id = ${body.id}
           RETURNING *
         `;
